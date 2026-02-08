@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-//# init --protocol-version 70 --accounts A --addresses P=0x0 --simulator
+//# init --protocol-version 108 --accounts A --addresses P=0x0 --simulator
 
 // 1. Look for a dynamic field with a simple key
 // 2. Look for a dynamic field with a struct-based key
@@ -23,7 +23,7 @@ module P::M {
 //> 0: mys::bag::new();
 //> 1: TransferObjects([Result(0)], Input(0))
 
-//# programmable --sender A --inputs object(2,0) 42 43u32 44 45 46 @A
+//# programmable --sender A --inputs object(2,0) 42 43u32 44 45 46
 //> 0: P::M::name(Input(1), Input(2));
 //> 1: mys::bag::add<u64, u64>(Input(0), Input(3), Input(4));
 //> 2: mys::bag::add<P::M::Name, u64>(Input(0), Result(0), Input(5))

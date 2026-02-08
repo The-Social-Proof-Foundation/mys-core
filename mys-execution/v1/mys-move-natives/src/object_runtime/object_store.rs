@@ -96,7 +96,6 @@ impl<'a> Inner<'a> {
                 &child,
                 version,
                 self.current_epoch_id,
-                false, // invariant verified in LocalProtocolConfig::new
             )
             .map_err(|msg| {
                 PartialVMError::new(StatusCode::STORAGE_ERROR).with_message(format!("{msg}"))
@@ -195,8 +194,8 @@ impl<'a> Inner<'a> {
                             Expected an id owner {parent} but found an address, immutable, or shared owner")
                         ))
                     }
-                    Owner::ConsensusV2 { .. } => {
-                        unimplemented!("ConsensusV2 does not exist for this execution version")
+                    Owner::ConsensusAddressOwner { .. } => {
+                        unimplemented!("ConsensusAddressOwner does not exist for this execution version")
                     }
                 };
                 match object.data {

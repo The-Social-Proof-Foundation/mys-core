@@ -10,6 +10,7 @@ use crate::{
 };
 use move_proc_macros::test_variant_order;
 use once_cell::sync::Lazy;
+use indexmap::IndexSet;
 #[cfg(any(test, feature = "fuzzing"))]
 use proptest_derive::Arbitrary;
 use serde::{Deserialize, Serialize};
@@ -131,6 +132,31 @@ impl TypeTag {
                 TypeTag::Struct(y) => y.abstract_size_for_gas_metering(),
             }
     }
+
+    /// Return all of the addresses used inside of the type.
+    pub fn all_addresses(&self) -> IndexSet<AccountAddress> {
+        let mut account_addresses = IndexSet::new();
+        self.find_addresses_internal(&mut account_addresses);
+        account_addresses
+    }
+
+    pub(crate) fn find_addresses_internal(&self, account_addresses: &mut IndexSet<AccountAddress>) {
+        match self {
+            TypeTag::Bool
+            | TypeTag::U8
+            | TypeTag::U64
+            | TypeTag::U128
+            | TypeTag::U16
+            | TypeTag::U32
+            | TypeTag::U256
+            | TypeTag::Address
+            | TypeTag::Signer => (),
+            TypeTag::Vector(inner) => inner.find_addresses_internal(account_addresses),
+            TypeTag::Struct(tag) => {
+                tag.all_addresses_internal(account_addresses);
+            }
+        }
+    }
 }
 
 impl FromStr for TypeTag {
@@ -172,6 +198,26 @@ impl StructTag {
         self.address == *move_std_addr
             && self.module.as_str().eq("string")
             && self.name.as_str().eq("String")
+    }
+
+    pub fn all_addresses(&self) -> IndexSet<AccountAddress> {
+        let mut account_addresses = IndexSet::new();
+        self.all_addresses_internal(&mut account_addresses);
+        account_addresses
+    }
+
+    pub(crate) fn all_addresses_internal(&self, addrs: &mut IndexSet<AccountAddress>) {
+        let StructTag {
+            address,
+            module: _,
+            name: _,
+            type_params,
+        } = self;
+        // Traverse in a pre-order manner. So the address is added first, then the type parameters.
+        addrs.insert(*address);
+        for tag in type_params {
+            tag.find_addresses_internal(addrs);
+        }
     }
 
     pub fn module_id(&self) -> ModuleId {

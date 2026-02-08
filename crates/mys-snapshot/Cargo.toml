@@ -28,6 +28,7 @@ mys-core.workspace = true
 mys-indexer-alt-framework.workspace = true
 mys-storage.workspace = true
 mys-protocol-config.workspace = true
+mys-futures.workspace = true
 fastcrypto = { workspace = true, features = ["copy_key"] }
 tokio = { workspace = true, features = ["full"] }
 serde_json.workspace = true

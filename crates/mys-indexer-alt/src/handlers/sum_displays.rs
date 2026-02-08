@@ -2,29 +2,38 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
+use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
-use diesel::{upsert::excluded, ExpressionMethods};
+use anyhow::Result;
+use anyhow::anyhow;
+use async_trait::async_trait;
+use diesel::ExpressionMethods;
+use diesel::upsert::excluded;
 use diesel_async::RunQueryDsl;
 use futures::future::try_join_all;
-use mys_field_count::FieldCount;
-use mys_indexer_alt_framework::pipeline::{sequential::Handler, Processor};
-use mys_indexer_alt_schema::{displays::StoredDisplay, schema::sum_displays};
-use mys_pg_db as db;
-use mys_types::{display::DisplayVersionUpdatedEvent, full_checkpoint_content::CheckpointData};
+use mys_indexer_alt_framework::FieldCount;
+use mys_indexer_alt_framework::pipeline::Processor;
+use mys_indexer_alt_framework::pipeline::sequential::Handler;
+use mys_indexer_alt_framework::postgres::Connection;
+use mys_indexer_alt_framework::postgres::Db;
+use mys_indexer_alt_framework::types::display::DisplayVersionUpdatedEvent;
+use mys_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
+use mys_indexer_alt_schema::displays::StoredDisplay;
+use mys_indexer_alt_schema::schema::sum_displays;
 
 const MAX_INSERT_CHUNK_ROWS: usize = i16::MAX as usize / StoredDisplay::FIELD_COUNT;
 
 pub(crate) struct SumDisplays;
 
+#[async_trait]
 impl Processor for SumDisplays {
     const NAME: &'static str = "sum_displays";
 
     type Value = StoredDisplay;
 
-    fn process(&self, checkpoint: &Arc<CheckpointData>) -> Result<Vec<Self::Value>> {
-        let CheckpointData { transactions, .. } = checkpoint.as_ref();
+    async fn process(&self, checkpoint: &Arc<Checkpoint>) -> Result<Vec<Self::Value>> {
+        let Checkpoint { transactions, .. } = checkpoint.as_ref();
 
         let mut values = vec![];
         for tx in transactions {
@@ -57,17 +66,18 @@ impl Processor for SumDisplays {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl Handler for SumDisplays {
+    type Store = Db;
     type Batch = BTreeMap<Vec<u8>, Self::Value>;
 
-    fn batch(batch: &mut Self::Batch, values: Vec<Self::Value>) {
+    fn batch(&self, batch: &mut Self::Batch, values: std::vec::IntoIter<Self::Value>) {
         for value in values {
             batch.insert(value.object_type.clone(), value);
         }
     }
 
-    async fn commit(batch: &Self::Batch, conn: &mut db::Connection<'_>) -> Result<usize> {
+    async fn commit<'a>(&self, batch: &Self::Batch, conn: &mut Connection<'a>) -> Result<usize> {
         let values: Vec<_> = batch.values().cloned().collect();
         let updates = values
             .chunks(MAX_INSERT_CHUNK_ROWS)

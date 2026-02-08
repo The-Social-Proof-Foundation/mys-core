@@ -2,17 +2,23 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use mys_storage::blob::{Blob, BlobEncoding};
-use mys_types::crypto::KeypairTraits;
-use mys_types::full_checkpoint_content::CheckpointData;
-use mys_types::gas::GasCostSummary;
-use mys_types::messages_checkpoint::{
-    CertifiedCheckpointSummary, CheckpointContents, CheckpointSummary, SignedCheckpointSummary,
-};
-use mys_types::supported_protocol_versions::ProtocolConfig;
-use mys_types::utils::make_committee_key;
-use rand::prelude::StdRng;
+use prost::Message;
 use rand::SeedableRng;
+use rand::prelude::StdRng;
+use mys_rpc::field::FieldMask;
+use mys_rpc::field::FieldMaskUtil;
+use mys_rpc::merge::Merge;
+use mys_rpc::proto::mys::rpc;
+
+use crate::types::crypto::KeypairTraits;
+use crate::types::full_checkpoint_content::CheckpointData;
+use crate::types::gas::GasCostSummary;
+use crate::types::messages_checkpoint::CertifiedCheckpointSummary;
+use crate::types::messages_checkpoint::CheckpointContents;
+use crate::types::messages_checkpoint::CheckpointSummary;
+use crate::types::messages_checkpoint::SignedCheckpointSummary;
+use crate::types::supported_protocol_versions::ProtocolConfig;
+use crate::types::utils::make_committee_key;
 
 const RNG_SEED: [u8; 32] = [
     21, 23, 199, 200, 234, 250, 252, 178, 94, 15, 202, 178, 62, 186, 88, 137, 233, 192, 130, 157,
@@ -34,6 +40,7 @@ pub(crate) fn test_checkpoint_data(cp: u64) -> Vec<u8> {
         None,
         0,
         Vec::new(),
+        Vec::new(),
     );
 
     let sign_infos: Vec<_> = keys
@@ -51,7 +58,44 @@ pub(crate) fn test_checkpoint_data(cp: u64) -> Vec<u8> {
         transactions: vec![],
     };
 
-    Blob::encode(&checkpoint_data, BlobEncoding::Bcs)
-        .unwrap()
-        .to_bytes()
+    let checkpoint: crate::types::full_checkpoint_content::Checkpoint = checkpoint_data.into();
+
+    let mask = FieldMask::from_paths([
+        rpc::v2::Checkpoint::path_builder().sequence_number(),
+        rpc::v2::Checkpoint::path_builder().summary().bcs().value(),
+        rpc::v2::Checkpoint::path_builder().signature().finish(),
+        rpc::v2::Checkpoint::path_builder().contents().bcs().value(),
+        rpc::v2::Checkpoint::path_builder()
+            .transactions()
+            .transaction()
+            .bcs()
+            .value(),
+        rpc::v2::Checkpoint::path_builder()
+            .transactions()
+            .effects()
+            .bcs()
+            .value(),
+        rpc::v2::Checkpoint::path_builder()
+            .transactions()
+            .effects()
+            .unchanged_loaded_runtime_objects()
+            .finish(),
+        rpc::v2::Checkpoint::path_builder()
+            .transactions()
+            .events()
+            .bcs()
+            .value(),
+        rpc::v2::Checkpoint::path_builder()
+            .objects()
+            .objects()
+            .bcs()
+            .value(),
+    ]);
+    let proto_checkpoint = rpc::v2::Checkpoint::merge_from(&checkpoint, &mask.into());
+
+    // Encode to protobuf bytes
+    let proto_bytes = proto_checkpoint.encode_to_vec();
+
+    // Compress with zstd
+    zstd::encode_all(&proto_bytes[..], 3).unwrap()
 }

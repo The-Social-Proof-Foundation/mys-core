@@ -15,7 +15,7 @@ use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, ensure, Result};
 use fastcrypto::traits::Signer;
 use mys_config::verifier_signing_config::VerifierSigningConfig;
 use mys_config::{genesis, transaction_deny_config::TransactionDenyConfig};
@@ -27,6 +27,7 @@ use mys_swarm_config::network_config_builder::ConfigBuilder;
 use mys_types::base_types::{AuthorityName, ObjectID, VersionNumber};
 use mys_types::crypto::AuthoritySignature;
 use mys_types::digests::ConsensusCommitDigest;
+use mys_types::effects::TransactionEffectsAPI;
 use mys_types::messages_consensus::ConsensusDeterminedVersionAssignments;
 use mys_types::mys_system_state::epoch_start_mys_system_state::EpochStartSystemState;
 use mys_types::object::Object;
@@ -328,6 +329,47 @@ impl<R, S: store::SimulatorStore> Simulacrum<R, S> {
     /// Return the reference gas price for the current epoch
     pub fn reference_gas_price(&self) -> u64 {
         self.epoch_state.reference_gas_price()
+    }
+
+    /// Create a new account and credit it with `amount` gas units from a faucet account. Returns
+    /// the account, its keypair, and a reference to the gas object it was funded with.
+    ///
+    /// ```
+    /// use simulacrum::Simulacrum;
+    /// use mys_types::base_types::MysAddress;
+    /// use mys_types::gas_coin::MIST_PER_MYS;
+    ///
+    /// # fn main() {
+    /// let mut simulacrum = Simulacrum::new();
+    /// let (account, kp, gas) = simulacrum.funded_account(MIST_PER_MYS).unwrap();
+    ///
+    /// // `account` is a fresh MysAddress that owns a Coin<MYS> object with single MYS in it,
+    /// // referred to by `gas`.
+    /// // ...
+    /// # }
+    /// ```
+    pub fn funded_account(
+        &mut self,
+        amount: u64,
+    ) -> Result<(MysAddress, mys_types::crypto::AccountKeyPair, mys_types::base_types::ObjectRef)> {
+        use anyhow::Context;
+        use mys_types::base_types::ObjectRef;
+        use mys_types::crypto::{get_account_key_pair, AccountKeyPair};
+        use mys_types::object::Owner;
+
+        let (address, key) = get_account_key_pair();
+        let fx = self.request_gas(address, amount)?;
+        ensure!(fx.status().is_ok(), "Failed to request gas for account");
+
+        let gas = fx
+            .created()
+            .into_iter()
+            .find_map(|(oref, owner)| {
+                matches!(owner, Owner::AddressOwner(owner) if owner == address).then_some(oref)
+            })
+            .context("Could not find created object")?;
+
+        Ok((address, key, gas))
     }
 
     /// Request that `amount` Mist be sent to `address` from a faucet account.

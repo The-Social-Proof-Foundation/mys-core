@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-//# init --protocol-version 70 --accounts A B --addresses test=0x0 --simulator
+//# init --protocol-version 108 --accounts A B --addresses test=0x0 --simulator
 
 // 1. Default behavior of getTransactionBlock (no options)
 // 2. "Not found" case
@@ -128,5 +128,29 @@ module test::counter {
     {
       "showBalanceChanges": true
     }
+  ]
+}
+
+//# run-jsonrpc
+{
+  "method": "mys_getTransactionBlock",
+  "params": [
+    "@{digest_3}"
+  ]
+}
+
+//# programmable --sender A --inputs 42 @B
+//> 0: SplitCoins(Gas, [Input(0)]);
+//> 1: TransferObjects([Result(0)], Input(1))
+
+//# advance-clock --duration-ns 1000000
+
+//# create-checkpoint
+
+//# run-jsonrpc
+{
+  "method": "mys_getTransactionBlock",
+  "params": [
+    "@{digest_13}"
   ]
 }

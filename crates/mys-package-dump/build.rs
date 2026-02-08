@@ -4,7 +4,7 @@
 
 fn main() {
     cynic_codegen::register_schema("mys")
-        .from_sdl_file("../mys-graphql-rpc/schema.graphql")
+        .from_sdl_file("../mys-indexer-alt-graphql/schema.graphql")
         .unwrap()
         .as_default()
         .unwrap();

@@ -895,6 +895,49 @@ impl MysError {
             _ => 0,
         }
     }
+
+    /// Categorizes MysError into ErrorCategory.
+    pub fn categorize(&self) -> ErrorCategory {
+        match self {
+            MysError::UserInputError { error } => {
+                match error {
+                    // ObjectNotFound and DependentPackageNotFound are potentially valid because the missing
+                    // input can be created by other transactions.
+                    UserInputError::ObjectNotFound { .. } => ErrorCategory::Aborted,
+                    UserInputError::DependentPackageNotFound { .. } => ErrorCategory::Aborted,
+                    // Other UserInputError variants indeed indicate invalid transaction.
+                    _ => ErrorCategory::InvalidTransaction,
+                }
+            }
+
+            MysError::InvalidSignature { .. }
+            | MysError::SignerSignatureAbsent { .. }
+            | MysError::SignerSignatureNumberMismatch { .. }
+            | MysError::IncorrectSigner { .. }
+            | MysError::UnknownSigner { .. }
+            | MysError::TransactionExpired => ErrorCategory::InvalidTransaction,
+
+            MysError::ObjectLockConflict { .. } => ErrorCategory::LockConflict,
+
+            MysError::Unknown { .. }
+            | MysError::ByzantineAuthoritySuspicion { .. }
+            | MysError::InvalidTxKindInSoftBundle
+            | MysError::UnsupportedFeatureError { .. } => ErrorCategory::Internal,
+
+            MysError::TooManyTransactionsPendingExecution { .. }
+            | MysError::TooManyTransactionsPendingOnObject { .. }
+            | MysError::TooOldTransactionPendingOnObject { .. }
+            | MysError::TooManyTransactionsPendingConsensus
+            | MysError::ValidatorOverloadedRetryAfter { .. } => {
+                ErrorCategory::ValidatorOverloaded
+            }
+
+            MysError::TimeoutError => ErrorCategory::Unavailable,
+
+            // Other variants are assumed to be retriable with new transaction submissions.
+            _ => ErrorCategory::Aborted,
+        }
+    }
 }
 
 impl Ord for MysError {
@@ -912,6 +955,9 @@ impl PartialOrd for MysError {
 type BoxError = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 pub type ExecutionErrorKind = ExecutionFailureStatus;
+
+// Type alias for backward compatibility
+pub type MysErrorKind = MysError;
 
 #[derive(Debug)]
 pub struct ExecutionError {
@@ -993,4 +1039,34 @@ pub fn command_argument_error(e: CommandArgumentError, arg_idx: usize) -> Execut
         e,
         arg_idx as u16,
     ))
+}
+
+/// Types of MysError.
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, IntoStaticStr)]
+pub enum ErrorCategory {
+    // A generic error that is retriable with new transaction resubmissions.
+    Aborted,
+    // Any validator or full node can check if a transaction is valid.
+    InvalidTransaction,
+    // Lock conflict on the transaction input.
+    LockConflict,
+    // Unexpected client error, for example generating invalid request or entering into invalid state.
+    // And unexpected error from the remote peer. The validator may be malicious or there is a software bug.
+    Internal,
+    // Validator is overloaded.
+    ValidatorOverloaded,
+    // Target validator is down or there are network issues.
+    Unavailable,
+}
+
+impl ErrorCategory {
+    // Whether the failure is retriable with new transaction submission.
+    pub fn is_submission_retriable(&self) -> bool {
+        matches!(
+            self,
+            ErrorCategory::Aborted
+                | ErrorCategory::ValidatorOverloaded
+                | ErrorCategory::Unavailable
+        )
+    }
 }

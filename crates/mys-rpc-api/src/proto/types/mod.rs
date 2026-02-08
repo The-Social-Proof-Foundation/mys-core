@@ -21,14 +21,16 @@ mod tests {
     }
 }
 
+pub mod balance;
 mod checkpoint;
+pub mod coin;
 mod effects;
 mod events;
 mod execution_status;
 mod move_types;
 mod object;
 mod signatures;
-mod transaction_convert;
+pub mod transaction_convert;
 
 //
 // Address
@@ -254,4 +256,22 @@ impl TryFrom<&I128> for i128 {
     fn try_from(value: &I128) -> Result<Self, Self::Error> {
         Ok(i128::from_le_bytes(value.bytes().try_into()?))
     }
+}
+
+//
+// SystemState conversion helper
+//
+
+/// Convert MysSystemState to proto SystemState via summary
+pub fn mys_system_state_to_proto(
+    system_state: mys_types::mys_system_state::MysSystemState,
+) -> mys_rpc::proto::mys::rpc::v2::SystemState {
+    use mys_types::mys_system_state::MysSystemStateTrait;
+    let summary = system_state.into_mys_system_state_summary();
+    // Convert through mys_sdk_types::SystemStateSummary -> proto::SystemState
+    // Both MysSystemStateSummary and mys_sdk_types::SystemStateSummary have the same structure
+    let bcs_bytes = bcs::to_bytes(&summary).expect("Failed to serialize MysSystemStateSummary");
+    let sdk_summary: mys_sdk_types::SystemStateSummary = bcs::from_bytes(&bcs_bytes)
+        .expect("Failed to deserialize to mys_sdk_types::SystemStateSummary");
+    sdk_summary.into()
 }

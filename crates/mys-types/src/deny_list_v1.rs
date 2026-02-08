@@ -11,8 +11,10 @@ use crate::object::{Object, Owner};
 use crate::storage::ObjectStore;
 use crate::transaction::{CheckedInputObjects, ReceivingObjects};
 use crate::MYS_DENY_LIST_OBJECT_ID;
+use crate::MYS_FRAMEWORK_ADDRESS;
 use move_core_types::ident_str;
 use move_core_types::identifier::IdentStr;
+use move_core_types::language_storage::{StructTag, TypeTag};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use tracing::debug;
@@ -137,6 +139,17 @@ pub struct RegulatedCoinMetadata {
     pub id: UID,
     pub coin_metadata_object: ID,
     pub deny_cap_object: ID,
+}
+
+impl RegulatedCoinMetadata {
+    pub fn type_(type_param: StructTag) -> StructTag {
+        StructTag {
+            address: MYS_FRAMEWORK_ADDRESS,
+            module: DENY_LIST_MODULE.to_owned(),
+            name: ident_str!("RegulatedCoinMetadata").to_owned(),
+            type_params: vec![TypeTag::Struct(Box::new(type_param))],
+        }
+    }
 }
 
 pub fn get_deny_list_root_object(object_store: &dyn ObjectStore) -> Option<Object> {

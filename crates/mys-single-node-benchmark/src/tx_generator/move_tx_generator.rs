@@ -8,7 +8,7 @@ use move_core_types::identifier::Identifier;
 use mys_test_transaction_builder::TestTransactionBuilder;
 use mys_types::base_types::{MysAddress, ObjectID, ObjectRef, SequenceNumber};
 use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
-use mys_types::transaction::{CallArg, ObjectArg, Transaction, DEFAULT_VALIDATOR_GAS_PRICE};
+use mys_types::transaction::{CallArg, ObjectArg, SharedObjectMutability, Transaction, DEFAULT_VALIDATOR_GAS_PRICE};
 use std::collections::HashMap;
 
 pub struct MoveTxGenerator {
@@ -81,7 +81,7 @@ impl TxGenerator for MoveTxGenerator {
                         vec![CallArg::Object(ObjectArg::SharedObject {
                             id: shared_object.0,
                             initial_shared_version: shared_object.1,
-                            mutable: true,
+                            mutability: SharedObjectMutability::Mutable,
                         })],
                     )
                     .unwrap();

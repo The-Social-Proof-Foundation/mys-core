@@ -2,30 +2,32 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use self::mys_system_state_inner_v1::{MysSystemStateInnerV1, ValidatorV1};
+use self::mys_system_state_summary::{MysSystemStateSummary, MysValidatorSummary};
 use crate::base_types::ObjectID;
+use crate::collection_types::Bag;
 use crate::committee::CommitteeWithNetworkMetadata;
 use crate::dynamic_field::{
-    get_dynamic_field_from_store, get_dynamic_field_object_from_store, Field,
+    Field, get_dynamic_field_from_store, get_dynamic_field_object_from_store,
 };
-use crate::error::MysError;
-use crate::mys_system_state::epoch_start_mys_system_state::EpochStartSystemState;
-use crate::mys_system_state::mys_system_state_inner_v2::MysSystemStateInnerV2;
+use crate::error::{MysError, MysErrorKind};
+use crate::gas::GasCostSummary;
 use crate::object::{MoveObject, Object};
 use crate::storage::ObjectStore;
+use crate::mys_system_state::epoch_start_mys_system_state::EpochStartSystemState;
+use crate::mys_system_state::mys_system_state_inner_v2::MysSystemStateInnerV2;
 use crate::versioned::Versioned;
-use crate::{id::UID, MoveTypeTagTrait, MYS_SYSTEM_ADDRESS, MYS_SYSTEM_STATE_OBJECT_ID};
+use crate::{MoveTypeTagTrait, MYS_SYSTEM_ADDRESS, MYS_SYSTEM_STATE_OBJECT_ID, id::UID};
 use anyhow::Result;
 use enum_dispatch::enum_dispatch;
 use move_core_types::{ident_str, identifier::IdentStr, language_storage::StructTag};
-use mys_protocol_config::{ProtocolConfig, ProtocolVersion};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-
-use self::mys_system_state_inner_v1::{MysSystemStateInnerV1, ValidatorV1};
-use self::mys_system_state_summary::{MysSystemStateSummary, MysValidatorSummary};
+use mys_protocol_config::{ProtocolConfig, ProtocolVersion};
 
 pub mod epoch_start_mys_system_state;
+pub mod mock;
 pub mod mys_system_state_inner_v1;
 pub mod mys_system_state_inner_v2;
 pub mod mys_system_state_summary;
@@ -41,6 +43,11 @@ use self::simtest_mys_system_state_inner::{
 const MYS_SYSTEM_STATE_WRAPPER_STRUCT_NAME: &IdentStr = ident_str!("MysSystemState");
 
 pub const MYS_SYSTEM_MODULE_NAME: &IdentStr = ident_str!("mys_system");
+pub const MYS_SYSTEM_STATE_INNER_MODULE_NAME: &IdentStr = ident_str!("mys_system_state_inner");
+pub const MYS_SYSTEM_STATE_INNER_V1_STRUCT_NAME: &IdentStr = ident_str!("MysSystemStateInner");
+pub const MYS_SYSTEM_STATE_INNER_V2_STRUCT_NAME: &IdentStr = ident_str!("MysSystemStateInnerV2");
+pub const VALIDATOR_MODULE_NAME: &IdentStr = ident_str!("validator");
+pub const VALIDATOR_STRUCT_NAME: &IdentStr = ident_str!("Validator");
 pub const ADVANCE_EPOCH_FUNCTION_NAME: &IdentStr = ident_str!("advance_epoch");
 pub const ADVANCE_EPOCH_SAFE_MODE_FUNCTION_NAME: &IdentStr = ident_str!("advance_epoch_safe_mode");
 
@@ -52,7 +59,7 @@ pub const MYS_SYSTEM_STATE_SIM_TEST_SHALLOW_V2: u64 = 18446744073709551606; // u
 pub const MYS_SYSTEM_STATE_SIM_TEST_DEEP_V2: u64 = 18446744073709551607; // u64::MAX - 8
 
 /// Rust version of the Move mys::mys_system::MysSystemState type
-/// This repreents the object with 0x5 ID.
+/// This represents the object with 0x5 ID.
 /// In Rust, this type should be rarely used since it's just a thin
 /// wrapper used to access the inner object.
 /// Within this module, we use it to determine the current version of the system state inner object type,
@@ -160,7 +167,7 @@ impl MysSystemStateWrapper {
         let new_contents = bcs::to_bytes(&field).expect("bcs serialization should never fail");
         move_object
             .update_contents(new_contents, protocol_config)
-            .expect("Update mys system object content cannot fail since it should be small");
+            .expect("Update mys system object content cannot fail since it should be small or unbounded");
     }
 }
 
@@ -173,7 +180,9 @@ pub trait MysSystemStateTrait {
     fn system_state_version(&self) -> u64;
     fn epoch_start_timestamp_ms(&self) -> u64;
     fn epoch_duration_ms(&self) -> u64;
+    fn extra_fields(&self) -> &Bag;
     fn safe_mode(&self) -> bool;
+    fn safe_mode_gas_cost_summary(&self) -> GasCostSummary;
     fn advance_epoch_safe_mode(&mut self, params: &AdvanceEpochParams);
     fn get_current_epoch_committee(&self) -> CommitteeWithNetworkMetadata;
     fn get_pending_active_validators<S: ObjectStore + ?Sized>(
@@ -229,15 +238,17 @@ pub fn get_mys_system_state_wrapper(
         .get_object(&MYS_SYSTEM_STATE_OBJECT_ID)
         // Don't panic here on None because object_store is a generic store.
         .ok_or_else(|| {
-            MysError::MysSystemStateReadError("MysSystemStateWrapper object not found".to_owned())
+            MysErrorKind::MysSystemStateReadError(
+                "MysSystemStateWrapper object not found".to_owned(),
+            )
         })?;
     let move_object = wrapper.data.try_as_move().ok_or_else(|| {
-        MysError::MysSystemStateReadError(
+        MysErrorKind::MysSystemStateReadError(
             "MysSystemStateWrapper object must be a Move object".to_owned(),
         )
     })?;
     let result = bcs::from_bytes::<MysSystemStateWrapper>(move_object.contents())
-        .map_err(|err| MysError::MysSystemStateReadError(err.to_string()))?;
+        .map_err(|err| MysErrorKind::MysSystemStateReadError(err.to_string()))?;
     Ok(result)
 }
 
@@ -249,7 +260,7 @@ pub fn get_mys_system_state(object_store: &dyn ObjectStore) -> Result<MysSystemS
             let result: MysSystemStateInnerV1 =
                 get_dynamic_field_from_store(object_store, id, &wrapper.version).map_err(
                     |err| {
-                        MysError::DynamicFieldReadError(format!(
+                        MysErrorKind::DynamicFieldReadError(format!(
                             "Failed to load mys system state inner object with ID {:?} and version {:?}: {:?}",
                             id, wrapper.version, err
                         ))
@@ -261,7 +272,7 @@ pub fn get_mys_system_state(object_store: &dyn ObjectStore) -> Result<MysSystemS
             let result: MysSystemStateInnerV2 =
                 get_dynamic_field_from_store(object_store, id, &wrapper.version).map_err(
                     |err| {
-                        MysError::DynamicFieldReadError(format!(
+                        MysErrorKind::DynamicFieldReadError(format!(
                             "Failed to load mys system state inner object with ID {:?} and version {:?}: {:?}",
                             id, wrapper.version, err
                         ))
@@ -274,7 +285,7 @@ pub fn get_mys_system_state(object_store: &dyn ObjectStore) -> Result<MysSystemS
             let result: SimTestMysSystemStateInnerV1 =
                 get_dynamic_field_from_store(object_store, id, &wrapper.version).map_err(
                     |err| {
-                        MysError::DynamicFieldReadError(format!(
+                        MysErrorKind::DynamicFieldReadError(format!(
                             "Failed to load mys system state inner object with ID {:?} and version {:?}: {:?}",
                             id, wrapper.version, err
                         ))
@@ -287,7 +298,7 @@ pub fn get_mys_system_state(object_store: &dyn ObjectStore) -> Result<MysSystemS
             let result: SimTestMysSystemStateInnerShallowV2 =
                 get_dynamic_field_from_store(object_store, id, &wrapper.version).map_err(
                     |err| {
-                        MysError::DynamicFieldReadError(format!(
+                        MysErrorKind::DynamicFieldReadError(format!(
                             "Failed to load mys system state inner object with ID {:?} and version {:?}: {:?}",
                             id, wrapper.version, err
                         ))
@@ -300,7 +311,7 @@ pub fn get_mys_system_state(object_store: &dyn ObjectStore) -> Result<MysSystemS
             let result: SimTestMysSystemStateInnerDeepV2 =
                 get_dynamic_field_from_store(object_store, id, &wrapper.version).map_err(
                     |err| {
-                        MysError::DynamicFieldReadError(format!(
+                        MysErrorKind::DynamicFieldReadError(format!(
                             "Failed to load mys system state inner object with ID {:?} and version {:?}: {:?}",
                             id, wrapper.version, err
                         ))
@@ -308,10 +319,11 @@ pub fn get_mys_system_state(object_store: &dyn ObjectStore) -> Result<MysSystemS
                 )?;
             Ok(MysSystemState::SimTestDeepV2(result))
         }
-        _ => Err(MysError::MysSystemStateReadError(format!(
+        _ => Err(MysErrorKind::MysSystemStateReadError(format!(
             "Unsupported MysSystemState version: {}",
             wrapper.version
-        ))),
+        ))
+        .into()),
     }
 }
 
@@ -325,11 +337,11 @@ pub fn get_validator_from_table<K>(
     key: &K,
 ) -> Result<MysValidatorSummary, MysError>
 where
-    K: MoveTypeTagTrait + Serialize + DeserializeOwned + fmt::Debug,
+    K: Clone + MoveTypeTagTrait + Serialize + DeserializeOwned + fmt::Debug,
 {
     let field: ValidatorWrapper = get_dynamic_field_from_store(object_store, table_id, key)
         .map_err(|err| {
-            MysError::MysSystemStateReadError(format!(
+            MysErrorKind::MysSystemStateReadError(format!(
                 "Failed to load validator wrapper from table: {:?}",
                 err
             ))
@@ -341,7 +353,7 @@ where
             let validator: ValidatorV1 =
                 get_dynamic_field_from_store(object_store, versioned.id.id.bytes, &version)
                     .map_err(|err| {
-                        MysError::MysSystemStateReadError(format!(
+                        MysErrorKind::MysSystemStateReadError(format!(
                             "Failed to load inner validator from the wrapper: {:?}",
                             err
                         ))
@@ -353,7 +365,7 @@ where
             let validator: SimTestValidatorV1 =
                 get_dynamic_field_from_store(object_store, versioned.id.id.bytes, &version)
                     .map_err(|err| {
-                        MysError::MysSystemStateReadError(format!(
+                        MysErrorKind::MysSystemStateReadError(format!(
                             "Failed to load inner validator from the wrapper: {:?}",
                             err
                         ))
@@ -365,17 +377,18 @@ where
             let validator: SimTestValidatorDeepV2 =
                 get_dynamic_field_from_store(object_store, versioned.id.id.bytes, &version)
                     .map_err(|err| {
-                        MysError::MysSystemStateReadError(format!(
+                        MysErrorKind::MysSystemStateReadError(format!(
                             "Failed to load inner validator from the wrapper: {:?}",
                             err
                         ))
                     })?;
             Ok(validator.into_mys_validator_summary())
         }
-        _ => Err(MysError::MysSystemStateReadError(format!(
+        _ => Err(MysErrorKind::MysSystemStateReadError(format!(
             "Unsupported Validator version: {}",
             version
-        ))),
+        ))
+        .into()),
     }
 }
 
@@ -392,7 +405,7 @@ where
     for i in 0..table_size {
         let validator: ValidatorType = get_dynamic_field_from_store(&object_store, table_id, &i)
             .map_err(|err| {
-                MysError::MysSystemStateReadError(format!(
+                MysErrorKind::MysSystemStateReadError(format!(
                     "Failed to load validator from table: {:?}",
                     err
                 ))

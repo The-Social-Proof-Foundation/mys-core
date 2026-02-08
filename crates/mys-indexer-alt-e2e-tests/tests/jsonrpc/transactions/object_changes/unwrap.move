@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-//# init --protocol-version 70 --accounts A --addresses P0=0x0 --simulator
+//# init --protocol-version 108 --accounts A --addresses P0=0x0 --simulator
 
 // Unwrapped objects don't show up in object changes.
 

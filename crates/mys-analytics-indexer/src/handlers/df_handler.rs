@@ -2,10 +2,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use fastcrypto::encoding::{Base64, Encoding};
 use mys_data_ingestion_core::Worker;
-use mys_indexer::errors::IndexerError;
 use mys_types::object::bounded_visitor::BoundedVisitor;
 use mys_types::{TypeTag, SYSTEM_PACKAGE_ADDRESSES};
 use std::collections::HashMap;
@@ -14,7 +13,7 @@ use tap::tap::TapFallible;
 use tokio::sync::Mutex;
 use tracing::warn;
 
-use mys_indexer::types::owner_to_owner_info;
+use crate::tables::OwnerType;
 use mys_json_rpc_types::MysMoveValue;
 use mys_package_resolver::Resolver;
 use mys_rpc_api::{CheckpointData, CheckpointTransaction};
@@ -141,6 +140,20 @@ impl DynamicFieldHandler {
             value: MysMoveValue::from(name_value).to_json_value(),
         };
         let name_json = serde_json::to_string(&name)?;
+        
+        // Local helper function to convert Owner to (OwnerType, Option<MysAddress>)
+        fn owner_to_owner_info(owner: &mys_types::object::Owner) -> (OwnerType, Option<mys_types::base_types::MysAddress>) {
+            match owner {
+                mys_types::object::Owner::AddressOwner(address) => (OwnerType::AddressOwner, Some(*address)),
+                mys_types::object::Owner::ObjectOwner(address) => (OwnerType::ObjectOwner, Some(*address)),
+                mys_types::object::Owner::Shared { .. } => (OwnerType::Shared, None),
+                mys_types::object::Owner::Immutable => (OwnerType::Immutable, None),
+                mys_types::object::Owner::ConsensusAddressOwner { owner, .. } => {
+                    (OwnerType::AddressOwner, Some(*owner))
+                }
+            }
+        }
+        
         let (_owner_type, owner_id) = owner_to_owner_info(&object.owner);
         let Some(parent_id) = owner_id else {
             return Ok(());
@@ -165,10 +178,10 @@ impl DynamicFieldHandler {
                 let object =
                     all_written_objects
                         .get(&object_id)
-                        .ok_or(IndexerError::UncategorizedError(anyhow::anyhow!(
+                        .with_context(|| format!(
                     "Failed to find object_id {:?} when trying to create dynamic field info",
                     object_id
-                )))?;
+                ))?;
                 let version = object.version().value();
                 let digest = object.digest().to_string();
                 let object_type = object.data.type_().unwrap().clone();

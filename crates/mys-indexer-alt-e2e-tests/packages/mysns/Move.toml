@@ -1,0 +1,9 @@
+[package]
+name = "mysns"
+edition = "2024.beta"
+
+[dependencies]
+Mys = { local = "../../../mys-framework/packages/mys-framework" }
+
+[addresses]
+mysns = "0x0"

@@ -2,25 +2,28 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::{cmp::Ordering, collections::BTreeMap, sync::Arc};
+use std::cmp::Ordering;
+use std::collections::BTreeMap;
+use std::sync::Arc;
 
-use diesel_async::{scoped_futures::ScopedFutureExt, AsyncConnection};
-use mys_pg_db::Db;
-use tokio::{
-    sync::mpsc,
-    task::JoinHandle,
-    time::{interval, MissedTickBehavior},
-};
-use tokio_util::sync::CancellationToken;
-use tracing::{debug, info, warn};
+use scoped_futures::ScopedFutureExt;
+use mys_futures::service::Service;
+use tokio::sync::mpsc;
+use tokio::time::MissedTickBehavior;
+use tokio::time::interval;
+use tracing::debug;
+use tracing::info;
+use tracing::warn;
 
-use crate::{
-    metrics::IndexerMetrics,
-    models::watermarks::CommitterWatermark,
-    pipeline::{logging::WatermarkLogger, IndexedCheckpoint, WARN_PENDING_WATERMARKS},
-};
-
-use super::{Handler, SequentialConfig};
+use crate::metrics::CheckpointLagMetricReporter;
+use crate::metrics::IndexerMetrics;
+use crate::pipeline::IndexedCheckpoint;
+use crate::pipeline::WARN_PENDING_WATERMARKS;
+use crate::pipeline::logging::WatermarkLogger;
+use crate::pipeline::sequential::Handler;
+use crate::pipeline::sequential::SequentialConfig;
+use crate::store::Connection;
+use crate::store::TransactionalStore;
 
 /// The committer task gathers rows into batches and writes them to the database.
 ///
@@ -38,18 +41,20 @@ use super::{Handler, SequentialConfig};
 ///
 /// Upon successful write, the task sends its new watermark back to the ingestion service, to
 /// unblock its regulator.
-///
-/// The task can be shutdown using its `cancel` token or if either of its channels are closed.
-pub(super) fn committer<H: Handler + 'static>(
+pub(super) fn committer<H>(
+    handler: Arc<H>,
     config: SequentialConfig,
-    watermark: Option<CommitterWatermark<'static>>,
+    mut next_checkpoint: u64,
     mut rx: mpsc::Receiver<IndexedCheckpoint<H>>,
     tx: mpsc::UnboundedSender<(&'static str, u64)>,
-    db: Db,
+    store: H::Store,
     metrics: Arc<IndexerMetrics>,
-    cancel: CancellationToken,
-) -> JoinHandle<()> {
-    tokio::spawn(async move {
+) -> Service
+where
+    H: Handler + Send + Sync + 'static,
+    H::Store: TransactionalStore + 'static,
+{
+    Service::new().spawn_aborting(async move {
         // The `poll` interval controls the maximum time to wait between commits, regardless of the
         // amount of data available.
         let mut poll = interval(config.committer.collect_interval());
@@ -69,34 +74,32 @@ pub(super) fn committer<H: Handler + 'static>(
         let mut batch_rows = 0;
         let mut batch_checkpoints = 0;
 
-        // The task keeps track of the highest (inclusive) checkpoint it has added to the batch,
-        // and whether that batch needs to be written out. By extension it also knows the next
-        // checkpoint to expect and add to the batch.
-        let (mut watermark, mut next_checkpoint) = if let Some(watermark) = watermark {
-            let next = watermark.checkpoint_hi_inclusive as u64 + 1;
-            (watermark, next)
-        } else {
-            (CommitterWatermark::initial(H::NAME.into()), 0)
-        };
+        // The task keeps track of the highest (inclusive) checkpoint it has added to the batch
+        // through `next_checkpoint`, and whether that batch needs to be written out. By extension
+        // it also knows the next checkpoint to expect and add to the batch. In case of db txn
+        // failures, we need to know the watermark update that failed, cached to this variable. in
+        // case of db txn failures.
+        let mut watermark = None;
 
         // The committer task will periodically output a log message at a higher log level to
         // demonstrate that the pipeline is making progress.
-        let mut logger = WatermarkLogger::new("sequential_committer", &watermark);
+        let mut logger = WatermarkLogger::new("sequential_committer");
+
+        let checkpoint_lag_reporter = CheckpointLagMetricReporter::new_for_pipeline::<H>(
+            &metrics.watermarked_checkpoint_timestamp_lag,
+            &metrics.latest_watermarked_checkpoint_timestamp_lag_ms,
+            &metrics.watermark_checkpoint_in_db,
+        );
 
         // Data for checkpoint that haven't been written yet. Note that `pending_rows` includes
         // rows in `batch`.
         let mut pending: BTreeMap<u64, IndexedCheckpoint<H>> = BTreeMap::new();
         let mut pending_rows = 0;
 
-        info!(pipeline = H::NAME, ?watermark, "Starting committer");
+        info!(pipeline = H::NAME, "Starting committer");
 
         loop {
             tokio::select! {
-                _ = cancel.cancelled() => {
-                    info!(pipeline = H::NAME, "Shutdown received");
-                    break;
-                }
-
                 _ = poll.tick() => {
                     if batch_checkpoints == 0
                         && rx.is_closed()
@@ -128,6 +131,7 @@ pub(super) fn committer<H: Handler + 'static>(
                     // writes by combining rows, but we will limit the number of checkpoints we try
                     // and batch together as a way to impose some limit on the size of the batch
                     // (and therefore the length of the write transaction).
+                    // docs::#batch  (see docs/content/guides/developer/advanced/custom-indexer.mdx)
                     while batch_checkpoints < H::MAX_BATCH_CHECKPOINTS {
                         if !can_process_pending(next_checkpoint, checkpoint_lag, &pending) {
                             break;
@@ -146,8 +150,8 @@ pub(super) fn committer<H: Handler + 'static>(
                                 let indexed = entry.remove();
                                 batch_rows += indexed.len();
                                 batch_checkpoints += 1;
-                                H::batch(&mut batch, indexed.values);
-                                watermark = indexed.watermark;
+                                handler.batch(&mut batch, indexed.values.into_iter());
+                                watermark = Some(indexed.watermark);
                                 next_checkpoint += 1;
                             }
 
@@ -164,6 +168,7 @@ pub(super) fn committer<H: Handler + 'static>(
                             }
                         }
                     }
+                    // docs::/#batch
 
                     let elapsed = guard.stop_and_record();
                     debug!(
@@ -177,11 +182,16 @@ pub(super) fn committer<H: Handler + 'static>(
                     // If there is no new data to commit, we can skip the rest of the process. Note
                     // that we cannot use batch_rows for the check, since it is possible that there
                     // are empty checkpoints with no new rows added, but the watermark still needs
-                    // to be updated.
+                    // to be updated. Conversely, if there is no watermark to be updated, we know
+                    // there is no data to write out.
                     if batch_checkpoints == 0 {
                         assert_eq!(batch_rows, 0);
                         continue;
                     }
+
+                    let Some(watermark) = watermark else {
+                        continue;
+                    };
 
                     metrics
                         .collector_batch_size
@@ -196,50 +206,35 @@ pub(super) fn committer<H: Handler + 'static>(
                     metrics
                         .watermark_epoch
                         .with_label_values(&[H::NAME])
-                        .set(watermark.epoch_hi_inclusive);
+                        .set(watermark.epoch_hi_inclusive as i64);
 
                     metrics
                         .watermark_checkpoint
                         .with_label_values(&[H::NAME])
-                        .set(watermark.checkpoint_hi_inclusive);
+                        .set(watermark.checkpoint_hi_inclusive as i64);
 
                     metrics
                         .watermark_transaction
                         .with_label_values(&[H::NAME])
-                        .set(watermark.tx_hi);
+                        .set(watermark.tx_hi as i64);
 
                     metrics
                         .watermark_timestamp_ms
                         .with_label_values(&[H::NAME])
-                        .set(watermark.timestamp_ms_hi_inclusive);
+                        .set(watermark.timestamp_ms_hi_inclusive as i64);
 
                     let guard = metrics
                         .committer_commit_latency
                         .with_label_values(&[H::NAME])
                         .start_timer();
 
-                    let Ok(mut conn) = db.connect().await else {
-                        warn!(pipeline = H::NAME, "Failed to get connection for DB");
-                        metrics
-                            .total_committer_batches_failed
-                            .with_label_values(&[H::NAME])
-                            .inc();
-                        continue;
-                    };
+                    let affected = store.transaction(|conn| {
+                        async {
+                            conn.set_committer_watermark(H::NAME, watermark).await?;
+                            handler.commit(&batch, conn).await
+                        }.scope_boxed()
+                    }).await;
 
-                    // Write all the object updates out along with the watermark update, in a
-                    // single transaction. The handler's `commit` implementation is responsible for
-                    // chunking up the writes into a manageable size.
-                    let affected = conn.transaction::<_, anyhow::Error, _>(|conn| async {
-                        // TODO: If initial_watermark is empty, when we update watermark
-                        // for the first time, we should also update the low watermark.
-                        watermark.update(conn).await?;
-                        H::commit(&batch, conn).await
-                    }.scope_boxed()).await;
-
-                    // Drop the connection eagerly to avoid it holding on to references borrowed by
-                    // the transaction closure.
-                    drop(conn);
 
                     let elapsed = guard.stop_and_record();
 
@@ -277,6 +272,11 @@ pub(super) fn committer<H: Handler + 'static>(
 
                     logger.log::<H>(&watermark, elapsed);
 
+                    checkpoint_lag_reporter.report_lag(
+                        watermark.checkpoint_hi_inclusive,
+                        watermark.timestamp_ms_hi_inclusive
+                    );
+
                     metrics
                         .total_committer_batches_succeeded
                         .with_label_values(&[H::NAME])
@@ -300,27 +300,29 @@ pub(super) fn committer<H: Handler + 'static>(
                     metrics
                         .watermark_epoch_in_db
                         .with_label_values(&[H::NAME])
-                        .set(watermark.epoch_hi_inclusive);
+                        .set(watermark.epoch_hi_inclusive as i64);
 
                     metrics
                         .watermark_checkpoint_in_db
                         .with_label_values(&[H::NAME])
-                        .set(watermark.checkpoint_hi_inclusive);
+                        .set(watermark.checkpoint_hi_inclusive as i64);
 
                     metrics
                         .watermark_transaction_in_db
                         .with_label_values(&[H::NAME])
-                        .set(watermark.tx_hi);
+                        .set(watermark.tx_hi as i64);
 
                     metrics
                         .watermark_timestamp_in_db_ms
                         .with_label_values(&[H::NAME])
-                        .set(watermark.timestamp_ms_hi_inclusive);
+                        .set(watermark.timestamp_ms_hi_inclusive as i64);
 
+                    // docs::#send (see docs/content/guides/developer/advanced/custom-indexer.mdx)
                     // Ignore the result -- the ingestion service will close this channel
                     // once it is done, but there may still be checkpoints buffered that need
                     // processing.
-                    let _ = tx.send((H::NAME, watermark.checkpoint_hi_inclusive as u64));
+                    let _ = tx.send((H::NAME, watermark.checkpoint_hi_inclusive + 1));
+                    // docs::/#send
 
                     let _ = std::mem::take(&mut batch);
                     pending_rows -= batch_rows;
@@ -364,7 +366,8 @@ pub(super) fn committer<H: Handler + 'static>(
             }
         }
 
-        info!(pipeline = H::NAME, ?watermark, "Stopping committer");
+        info!(pipeline = H::NAME, "Stopping committer");
+        Ok(())
     })
 }
 
@@ -387,4 +390,392 @@ fn can_process_pending<T>(
     };
 
     first <= next_checkpoint && first + checkpoint_lag <= last
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    use async_trait::async_trait;
+    use prometheus::Registry;
+    use mys_types::full_checkpoint_content::Checkpoint;
+    use tokio::sync::mpsc;
+
+    use crate::mocks::store::MockConnection;
+    use crate::mocks::store::MockStore;
+    use crate::pipeline::CommitterConfig;
+    use crate::pipeline::Processor;
+
+    use super::*;
+
+    // Test implementation of Handler
+    #[derive(Default)]
+    struct TestHandler;
+
+    #[async_trait]
+    impl Processor for TestHandler {
+        const NAME: &'static str = "test";
+        type Value = u64;
+
+        async fn process(&self, _checkpoint: &Arc<Checkpoint>) -> anyhow::Result<Vec<Self::Value>> {
+            Ok(vec![])
+        }
+    }
+
+    #[async_trait]
+    impl super::Handler for TestHandler {
+        type Store = MockStore;
+        type Batch = Vec<u64>;
+        const MAX_BATCH_CHECKPOINTS: usize = 3; // Using small max value for testing.
+        const MIN_EAGER_ROWS: usize = 4; // Using small eager value for testing.
+
+        fn batch(&self, batch: &mut Self::Batch, values: std::vec::IntoIter<Self::Value>) {
+            batch.extend(values);
+        }
+
+        async fn commit<'a>(
+            &self,
+            batch: &Self::Batch,
+            conn: &mut MockConnection<'a>,
+        ) -> anyhow::Result<usize> {
+            if !batch.is_empty() {
+                let mut sequential_data = conn.0.sequential_checkpoint_data.lock().unwrap();
+                sequential_data.extend(batch.iter().cloned());
+            }
+            Ok(batch.len())
+        }
+    }
+
+    struct TestSetup {
+        store: MockStore,
+        checkpoint_tx: mpsc::Sender<IndexedCheckpoint<TestHandler>>,
+        commit_hi_rx: mpsc::UnboundedReceiver<(&'static str, u64)>,
+        #[allow(unused)]
+        committer: Service,
+    }
+
+    /// Emulates adding a sequential pipeline to the indexer. The next_checkpoint is the checkpoint
+    /// for the indexer to ingest from.
+    fn setup_test(next_checkpoint: u64, config: SequentialConfig, store: MockStore) -> TestSetup {
+        let metrics = IndexerMetrics::new(None, &Registry::default());
+
+        let (checkpoint_tx, checkpoint_rx) = mpsc::channel(10);
+        #[allow(clippy::disallowed_methods)]
+        let (commit_hi_tx, commit_hi_rx) = mpsc::unbounded_channel();
+
+        let store_clone = store.clone();
+        let handler = Arc::new(TestHandler);
+        let committer = committer(
+            handler,
+            config,
+            next_checkpoint,
+            checkpoint_rx,
+            commit_hi_tx,
+            store_clone,
+            metrics,
+        );
+
+        TestSetup {
+            store,
+            checkpoint_tx,
+            commit_hi_rx,
+            committer,
+        }
+    }
+
+    async fn send_checkpoint(setup: &mut TestSetup, checkpoint: u64) {
+        setup
+            .checkpoint_tx
+            .send(create_checkpoint(checkpoint))
+            .await
+            .unwrap();
+    }
+
+    fn create_checkpoint(checkpoint: u64) -> IndexedCheckpoint<TestHandler> {
+        IndexedCheckpoint::new(
+            checkpoint,        // epoch
+            checkpoint,        // checkpoint number
+            checkpoint,        // tx_hi
+            checkpoint * 1000, // timestamp
+            vec![checkpoint],  // values
+        )
+    }
+
+    #[tokio::test]
+    async fn test_committer_processes_sequential_checkpoints() {
+        let config = SequentialConfig {
+            committer: CommitterConfig::default(),
+            checkpoint_lag: 0, // Zero checkpoint lag to process new batch instantly
+        };
+        let mut setup = setup_test(0, config, MockStore::default());
+
+        // Send checkpoints in order
+        for i in 0..3 {
+            send_checkpoint(&mut setup, i).await;
+        }
+
+        // Wait for processing
+        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        // Verify data was written in order
+        assert_eq!(setup.store.get_sequential_data(), vec![0, 1, 2]);
+
+        // Verify watermark was updated
+        {
+            let watermark = setup.store.watermark(TestHandler::NAME).unwrap();
+            assert_eq!(watermark.checkpoint_hi_inclusive, 2);
+            assert_eq!(watermark.tx_hi, 2);
+        }
+
+        // Verify commit_hi was sent to ingestion
+        let commit_hi = setup.commit_hi_rx.recv().await.unwrap();
+        assert_eq!(commit_hi.0, "test", "Pipeline name should be 'test'");
+        assert_eq!(commit_hi.1, 3, "commit_hi should be 3 (checkpoint 2 + 1)");
+    }
+
+    /// Configure the MockStore with no watermark, and emulate `first_checkpoint` by passing the
+    /// `initial_watermark` into the setup.
+    #[tokio::test]
+    async fn test_committer_processes_sequential_checkpoints_with_initial_watermark() {
+        let config = SequentialConfig::default();
+        let mut setup = setup_test(5, config, MockStore::default());
+
+        // Verify watermark hasn't progressed
+        let watermark = setup.store.watermark(TestHandler::NAME);
+        assert!(watermark.is_none());
+
+        // Send checkpoints in order
+        for i in 0..5 {
+            send_checkpoint(&mut setup, i).await;
+        }
+
+        // Wait for processing
+        tokio::time::sleep(Duration::from_millis(1000)).await;
+
+        // Verify watermark hasn't progressed
+        let watermark = setup.store.watermark(TestHandler::NAME);
+        assert!(watermark.is_none());
+
+        for i in 5..8 {
+            send_checkpoint(&mut setup, i).await;
+        }
+
+        // Wait for processing
+        tokio::time::sleep(Duration::from_millis(1000)).await;
+
+        // Verify data was written in order
+        assert_eq!(setup.store.get_sequential_data(), vec![5, 6, 7]);
+
+        // Verify watermark was updated
+        {
+            let watermark = setup.store.watermark(TestHandler::NAME).unwrap();
+            assert_eq!(watermark.checkpoint_hi_inclusive, 7);
+            assert_eq!(watermark.tx_hi, 7);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_committer_processes_out_of_order_checkpoints() {
+        let config = SequentialConfig {
+            committer: CommitterConfig::default(),
+            checkpoint_lag: 0, // Zero checkpoint lag to process new batch instantly
+        };
+        let mut setup = setup_test(0, config, MockStore::default());
+
+        // Send checkpoints out of order
+        for i in [1, 0, 2] {
+            send_checkpoint(&mut setup, i).await;
+        }
+
+        // Wait for processing
+        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        // Verify data was written in order despite receiving out of order
+        assert_eq!(setup.store.get_sequential_data(), vec![0, 1, 2]);
+
+        // Verify watermark was updated
+        {
+            let watermark = setup.store.watermark(TestHandler::NAME).unwrap();
+            assert_eq!(watermark.checkpoint_hi_inclusive, 2);
+            assert_eq!(watermark.tx_hi, 2);
+        }
+
+        // Verify commit_hi was sent to ingestion
+        let commit_hi = setup.commit_hi_rx.recv().await.unwrap();
+        assert_eq!(commit_hi.0, "test", "Pipeline name should be 'test'");
+        assert_eq!(commit_hi.1, 3, "commit_hi should be 3 (checkpoint 2 + 1)");
+    }
+
+    #[tokio::test]
+    async fn test_committer_commit_up_to_max_batch_checkpoints() {
+        let config = SequentialConfig {
+            committer: CommitterConfig::default(),
+            checkpoint_lag: 0, // Zero checkpoint lag to process new batch instantly
+        };
+        let mut setup = setup_test(0, config, MockStore::default());
+
+        // Send checkpoints up to MAX_BATCH_CHECKPOINTS
+        for i in 0..4 {
+            send_checkpoint(&mut setup, i).await;
+        }
+
+        // Wait for processing
+        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        // Verify commit_hi values are sent for each batch
+        let commit_hi1 = setup.commit_hi_rx.recv().await.unwrap();
+        assert_eq!(
+            commit_hi1.1, 3,
+            "First commit_hi should be 3 (checkpoint 2 + 1, highest processed of first batch)"
+        );
+
+        let commit_hi2 = setup.commit_hi_rx.recv().await.unwrap();
+        assert_eq!(
+            commit_hi2.1, 4,
+            "Second commit_hi should be 4 (checkpoint 3 + 1, highest processed of second batch)"
+        );
+
+        // Verify data is written in order across batches
+        assert_eq!(setup.store.get_sequential_data(), vec![0, 1, 2, 3]);
+    }
+
+    #[tokio::test]
+    async fn test_committer_does_not_commit_until_checkpoint_lag() {
+        let config = SequentialConfig {
+            committer: CommitterConfig::default(),
+            checkpoint_lag: 1, // Only commit checkpoints that are at least 1 behind
+        };
+        let mut setup = setup_test(0, config, MockStore::default());
+
+        // Send checkpoints 0-2
+        for i in 0..3 {
+            send_checkpoint(&mut setup, i).await;
+        }
+
+        // Wait for processing
+        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        // Verify only checkpoints 0 and 1 are written (since checkpoint 2 is not lagged enough)
+        assert_eq!(setup.store.get_sequential_data(), vec![0, 1]);
+        let commit_hi = setup.commit_hi_rx.recv().await.unwrap();
+        assert_eq!(commit_hi.1, 2, "commit_hi should be 2 (checkpoint 1 + 1)");
+
+        // Send checkpoint 3 to exceed the checkpoint_lag for checkpoint 2
+        send_checkpoint(&mut setup, 3).await;
+
+        // Wait for next polling processing
+        tokio::time::sleep(Duration::from_millis(1000)).await;
+
+        // Verify checkpoint 2 is now written
+        assert_eq!(setup.store.get_sequential_data(), vec![0, 1, 2]);
+        let commit_hi = setup.commit_hi_rx.recv().await.unwrap();
+        assert_eq!(commit_hi.1, 3, "commit_hi should be 3 (checkpoint 2 + 1)");
+    }
+
+    #[tokio::test]
+    async fn test_committer_commits_eagerly() {
+        let config = SequentialConfig {
+            committer: CommitterConfig {
+                collect_interval_ms: 4_000, // Long polling to test eager commit
+                ..Default::default()
+            },
+            checkpoint_lag: 0, // Zero checkpoint lag to not block the eager logic
+        };
+        let mut setup = setup_test(0, config, MockStore::default());
+
+        // Wait for initial poll to be over
+        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        // Send checkpoints 0-2
+        for i in 0..3 {
+            send_checkpoint(&mut setup, i).await;
+        }
+
+        // Verify no checkpoints are written yet (not enough rows for eager commit)
+        assert_eq!(setup.store.get_sequential_data(), Vec::<u64>::new());
+
+        // Send checkpoint 3 to trigger the eager commit (3 + 1 >= MIN_EAGER_ROWS)
+        send_checkpoint(&mut setup, 3).await;
+
+        // Wait for processing
+        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        // Verify all checkpoints are written
+        assert_eq!(setup.store.get_sequential_data(), vec![0, 1, 2, 3]);
+    }
+
+    #[tokio::test]
+    async fn test_committer_cannot_commit_eagerly_due_to_checkpoint_lag() {
+        let config = SequentialConfig {
+            committer: CommitterConfig {
+                collect_interval_ms: 4_000, // Long polling to test eager commit
+                ..Default::default()
+            },
+            checkpoint_lag: 4, // High checkpoint lag to block eager commits
+        };
+        let mut setup = setup_test(0, config, MockStore::default());
+
+        // Wait for initial poll to be over
+        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        // Send checkpoints 0-3
+        for i in 0..4 {
+            send_checkpoint(&mut setup, i).await;
+        }
+
+        // Wait for processing
+        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        // Verify no checkpoints are written due to checkpoint lag
+        assert_eq!(setup.store.get_sequential_data(), Vec::<u64>::new());
+
+        // Send checkpoint 4 to exceed checkpoint lag
+        send_checkpoint(&mut setup, 4).await;
+
+        // Wait for processing
+        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        // Verify only checkpoint 0 is written (since it's the only one that satisfies checkpoint_lag)
+        assert_eq!(setup.store.get_sequential_data(), vec![0]);
+    }
+
+    #[tokio::test]
+    async fn test_committer_retries_on_transaction_failure() {
+        let config = SequentialConfig {
+            committer: CommitterConfig {
+                collect_interval_ms: 1_000, // Long polling to test retry logic
+                ..Default::default()
+            },
+            checkpoint_lag: 0,
+        };
+
+        // Create store with transaction failure configuration
+        let store = MockStore::default().with_transaction_failures(1); // Will fail once before succeeding
+
+        let mut setup = setup_test(10, config, store);
+
+        // Send a checkpoint
+        send_checkpoint(&mut setup, 10).await;
+
+        // Wait for initial poll to be over
+        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        // Verify no data is written before retries complete
+        assert_eq!(setup.store.get_sequential_data(), Vec::<u64>::new());
+
+        // Wait for retries to complete
+        tokio::time::sleep(Duration::from_millis(1_200)).await;
+
+        // Verify data is written after retries complete on next polling
+        assert_eq!(setup.store.get_sequential_data(), vec![10]);
+
+        // Verify commit_hi is updated
+        let commit_hi = setup.commit_hi_rx.recv().await.unwrap();
+        assert_eq!(commit_hi.0, "test", "Pipeline name should be 'test'");
+        assert_eq!(
+            commit_hi.1, 11,
+            "commit_hi should be 11 (checkpoint 10 + 1)"
+        );
+    }
 }

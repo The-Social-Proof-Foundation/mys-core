@@ -17,6 +17,7 @@ use mys_storage::{compute_sha3_checksum_for_bytes, make_iterator, verify_checkpo
 use mys_types::messages_checkpoint::{
     CertifiedCheckpointSummary, CheckpointSequenceNumber,
     FullCheckpointContents as CheckpointContents, VerifiedCheckpoint, VerifiedCheckpointContents,
+    VersionedFullCheckpointContents,
 };
 use mys_types::storage::WriteStore;
 use prometheus::{register_int_counter_vec_with_registry, IntCounterVec, Registry};
@@ -489,7 +490,7 @@ impl ArchiveReader {
                             let digest = verified_checkpoint.content_digest;
                             contents.verify_digests(digest)?;
                             let verified_contents =
-                                VerifiedCheckpointContents::new_unchecked(contents.clone());
+                                VerifiedCheckpointContents::new_unchecked(VersionedFullCheckpointContents::V1(contents.clone()));
                             // Insert content
                             store
                                 .insert_checkpoint_contents(&verified_checkpoint, verified_contents)

@@ -1,26 +1,42 @@
 [package]
 name = "mys-kvstore"
-authors = ["Mysten Labs <build@mystenlabs.com>"]
+authors = ["Brandon Shaw <brandon@mysocial.network>"]
 license = "Apache-2.0"
 publish = false
-edition = "2021"
+edition = "2024"
 version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+bytes.workspace = true
 async-trait.workspace = true
 base64.workspace = true
 bcs.workspace = true
+clap.workspace = true
 http.workspace = true
 gcp_auth.workspace = true
+humantime.workspace = true
 prometheus.workspace = true
 prost.workspace = true
 prost-types.workspace = true
+rustls.workspace = true
 serde.workspace = true
 mys-data-ingestion-core.workspace = true
+mys-indexer-alt-framework.workspace = true
+mys-indexer-alt-framework-store-traits.workspace = true
+mys-indexer-alt-metrics.workspace = true
 mys-types.workspace = true
 telemetry-subscribers.workspace = true
-tempfile.workspace = true
 tokio = { workspace = true, features = ["full"] }
-tonic = {version = "0.12.2",features = ["tls", "transport"] }
+tonic = { workspace = true, features = ["transport"] }
+tonic-prost.workspace = true
 tracing.workspace = true
+
+[dev-dependencies]
+futures.workspace = true
+mys-indexer-alt-framework = { workspace = true, features = ["cluster"] }
+mys-keys.workspace = true
+mys-rpc.workspace = true
+test-cluster.workspace = true
+tokio-stream.workspace = true
+url.workspace = true

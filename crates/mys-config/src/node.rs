@@ -65,7 +65,7 @@ pub struct NodeConfig {
     pub json_rpc_address: SocketAddr,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub rpc: Option<mys_rpc_api::Config>,
+    pub rpc: Option<crate::RpcConfig>,
 
     #[serde(default = "default_metrics_address")]
     pub metrics_address: SocketAddr,
@@ -211,6 +211,10 @@ pub struct NodeConfig {
     /// If unspecified, this will default to `128`.
     #[serde(default = "default_local_execution_time_channel_capacity")]
     pub local_execution_time_channel_capacity: usize,
+
+    /// Fork recovery configuration for handling validator equivocation after forks
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fork_recovery: Option<ForkRecoveryConfig>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -638,6 +642,8 @@ impl NodeConfig {
                         download_concurrency: NonZeroUsize::new(config.concurrency)
                             .unwrap_or(NonZeroUsize::new(5).unwrap()),
                         use_for_pruning_watermark: config.use_for_pruning_watermark,
+                        ingestion_url: config.ingestion_url.clone(),
+                        remote_store_options: config.remote_store_options.clone(),
                     })
             })
             .collect()
@@ -647,7 +653,7 @@ impl NodeConfig {
         self.jsonrpc_server_type.unwrap_or(ServerType::Http)
     }
 
-    pub fn rpc(&self) -> Option<&mys_rpc_api::Config> {
+    pub fn rpc(&self) -> Option<&crate::RpcConfig> {
         self.rpc.as_ref()
     }
 }
@@ -989,6 +995,8 @@ pub struct ArchiveReaderConfig {
     pub remote_store_config: ObjectStoreConfig,
     pub download_concurrency: NonZeroUsize,
     pub use_for_pruning_watermark: bool,
+    pub ingestion_url: Option<String>,
+    pub remote_store_options: Vec<(String, String)>,
 }
 
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
@@ -998,6 +1006,10 @@ pub struct StateArchiveConfig {
     pub object_store_config: Option<ObjectStoreConfig>,
     pub concurrency: usize,
     pub use_for_pruning_watermark: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ingestion_url: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub remote_store_options: Vec<(String, String)>,
 }
 
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
@@ -1419,4 +1431,34 @@ impl RunWithRange {
     pub fn matches_checkpoint(&self, seq_num: CheckpointSequenceNumber) -> bool {
         matches!(self, RunWithRange::Checkpoint(seq) if *seq == seq_num)
     }
+}
+
+#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum ForkCrashBehavior {
+    #[serde(rename = "await-fork-recovery")]
+    #[default]
+    AwaitForkRecovery,
+    /// Return an error instead of blocking forever. This is primarily for testing.
+    #[serde(rename = "return-error")]
+    ReturnError,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct ForkRecoveryConfig {
+    /// Map of transaction digest to effects digest overrides
+    /// Used to repoint transactions to correct effects after a fork
+    #[serde(default)]
+    pub transaction_overrides: BTreeMap<String, String>,
+
+    /// Map of checkpoint sequence number to checkpoint digest overrides
+    /// On node start, if we have a locally computed checkpoint with a
+    /// digest mismatch with this table, we will clear any associated local state.
+    #[serde(default)]
+    pub checkpoint_overrides: BTreeMap<u64, String>,
+
+    /// Behavior when a fork is detected after recovery attempts
+    #[serde(default)]
+    pub fork_crash_behavior: ForkCrashBehavior,
 }

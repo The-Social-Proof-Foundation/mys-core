@@ -8,6 +8,7 @@ mod snapshot;
 use archives::ArchivalCheckpointInfo;
 use clap::Parser;
 use mys_pg_db::DbArgs;
+use url::Url;
 
 use crate::snapshot::SnapshotRestorer;
 
@@ -28,8 +29,8 @@ pub struct Args {
     pub snapshot_bucket: String,
 
     /// Bucket to fetch archive files from.
-    #[clap(long, env = "ARCHIVE_BUCKET", required = true)]
-    pub archive_bucket: String,
+    #[clap(long, env = "ARCHIVE_URL", required = true)]
+    pub archive_url: String,
 
     /// Local directory to temporarily store snapshot files.
     #[clap(long, env = "SNAPSHOT_LOCAL_DIR", required = true)]
@@ -38,6 +39,14 @@ pub struct Args {
     /// Number of concurrent restore tasks to run.
     #[clap(long, env = "CONCURRENCY", default_value_t = 50)]
     pub concurrency: usize,
+
+    /// The URL of the database to connect to.
+    #[clap(
+        long,
+        env = "DATABASE_URL",
+        default_value = "postgres://postgres:postgrespw@localhost:5432/mys_indexer_alt"
+    )]
+    pub database_url: Url,
 
     /// Database connection arguments from `mys-pg-db`.
     #[clap(flatten)]

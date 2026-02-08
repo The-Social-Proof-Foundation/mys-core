@@ -2,18 +2,20 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use std::collections::HashMap;
+
 use super::{MysSystemState, MysSystemStateTrait};
-use crate::base_types::{AuthorityName, MysAddress, ObjectID};
+use crate::base_types::{AuthorityName, ObjectID, MysAddress};
 use crate::committee::{CommitteeWithNetworkMetadata, NetworkMetadata};
 use crate::crypto::NetworkPublicKey;
 use crate::dynamic_field::get_dynamic_field_from_store;
-use crate::error::MysError;
+use crate::error::{MysError, MysErrorKind};
 use crate::id::ID;
 use crate::multiaddr::Multiaddr;
+use crate::storage::ObjectStore;
 use crate::mys_serde::BigInt;
 use crate::mys_serde::Readable;
 use crate::mys_system_state::get_validator_from_table;
-use crate::storage::ObjectStore;
 use fastcrypto::encoding::Base64;
 use fastcrypto::traits::ToFromBytes;
 use schemars::JsonSchema;
@@ -129,34 +131,18 @@ pub struct MysSystemStateSummary {
     #[schemars(with = "BigInt<u64>")]
     #[serde_as(as = "Readable<BigInt<u64>, _>")]
     pub stake_subsidy_distribution_counter: u64,
-    /// The current stake subsidy APY (in basis points).
+    /// The amount of stake subsidy to be drawn down per epoch.
     /// This amount decays and decreases over time.
     #[schemars(with = "BigInt<u64>")]
     #[serde_as(as = "Readable<BigInt<u64>, _>")]
-    pub stake_subsidy_current_apy_bps: u64,
-    /// Number of distributions to occur before the APY decays.
+    pub stake_subsidy_current_distribution_amount: u64,
+    /// Number of distributions to occur before the distribution amount decays.
     #[schemars(with = "BigInt<u64>")]
     #[serde_as(as = "Readable<BigInt<u64>, _>")]
     pub stake_subsidy_period_length: u64,
-    /// The rate at which the APY decays at the end of each
+    /// The rate at which the distribution amount decays at the end of each
     /// period. Expressed in basis points.
     pub stake_subsidy_decrease_rate: u16,
-
-    /// Maximum APY cap (in basis points). Effective APY will never exceed this.
-    #[schemars(with = "BigInt<u64>")]
-    #[serde_as(as = "Readable<BigInt<u64>, _>")]
-    pub stake_subsidy_max_apy_bps: u64,
-
-    /// Minimum APY floor (in basis points). Effective APY will never go below this.
-    #[schemars(with = "BigInt<u64>")]
-    #[serde_as(as = "Readable<BigInt<u64>, _>")]
-    pub stake_subsidy_min_apy_bps: u64,
-
-    /// Target duration for subsidy pool in years (e.g., 10).
-    /// Used to calculate stake-aware APY reduction to ensure pool sustainability.
-    #[schemars(with = "BigInt<u64>")]
-    #[serde_as(as = "Readable<BigInt<u64>, _>")]
-    pub stake_subsidy_intended_duration_years: u64,
 
     // Validator set
     /// Total amount of stake from all active validators at the beginning of the epoch.
@@ -176,7 +162,7 @@ pub struct MysSystemStateSummary {
     #[schemars(with = "Vec<BigInt<u64>>")]
     #[serde_as(as = "Vec<Readable<BigInt<u64>, _>>")]
     pub pending_removals: Vec<u64>,
-    /// ID of the object that maps from staking pool's ID to the mys address of a validator.
+    /// ID of the object that maps from staking pool's ID to the sui address of a validator.
     pub staking_pool_mappings_id: ObjectID,
     /// Number of staking pool mappings.
     #[schemars(with = "BigInt<u64>")]
@@ -230,6 +216,18 @@ impl MysSystemStateSummary {
             })
             .collect();
         CommitteeWithNetworkMetadata::new(self.epoch, validators)
+    }
+
+    pub fn get_committee_authority_names_to_hostnames(&self) -> HashMap<AuthorityName, String> {
+        self.active_validators
+            .iter()
+            .map(|validator| {
+                let name = AuthorityName::from_bytes(&validator.protocol_pubkey_bytes).unwrap();
+                let hostname = validator.name.clone();
+
+                (name, hostname)
+            })
+            .collect()
     }
 }
 
@@ -365,12 +363,9 @@ impl Default for MysSystemStateSummary {
             validator_low_stake_grace_period: 0,
             stake_subsidy_balance: 0,
             stake_subsidy_distribution_counter: 0,
-            stake_subsidy_current_apy_bps: 0,
+            stake_subsidy_current_distribution_amount: 0,
             stake_subsidy_period_length: 0,
             stake_subsidy_decrease_rate: 0,
-            stake_subsidy_max_apy_bps: 10000, // 100% default
-            stake_subsidy_min_apy_bps: 0,
-            stake_subsidy_intended_duration_years: 10,
             total_stake: 0,
             active_validators: vec![],
             pending_active_validators_id: ObjectID::ZERO,
@@ -475,7 +470,7 @@ where
         &ID::new(pool_id),
     )
     .map_err(|err| {
-        MysError::MysSystemStateReadError(format!(
+        MysErrorKind::MysSystemStateReadError(format!(
             "Failed to load candidate address from pool mappings: {:?}",
             err
         ))

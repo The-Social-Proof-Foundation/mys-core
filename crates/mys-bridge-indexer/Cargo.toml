@@ -37,15 +37,12 @@ tracing.workspace = true
 backoff.workspace = true
 mys-config.workspace = true
 tempfile.workspace = true
-mys-indexer-builder.workspace = true
 
 [dev-dependencies]
 mys-test-transaction-builder.workspace = true
 test-cluster.workspace = true
 hex-literal = "0.3.4"
-mys-indexer.workspace = true
 diesel_migrations = "2.2.0"
-mys-indexer-builder = { workspace = true, features = ["test-utils"] }
 mys-bridge = { workspace = true, features = ["test-utils"] }
 
 [[bin]]

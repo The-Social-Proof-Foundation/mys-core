@@ -25,9 +25,7 @@ shared-crypto.workspace = true
 derive_more = { workspace = true, features = ["debug"] }
 regex.workspace = true
 
-mys-indexer.workspace = true
 mys-faucet.workspace = true
-mys-graphql-rpc.workspace = true
 mys-pg-db.workspace = true
 mys-swarm.workspace = true
 mys-swarm-config.workspace = true

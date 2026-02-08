@@ -9,12 +9,11 @@ use crate::base_types::{AuthorityName, EpochId, MysAddress};
 use crate::committee::{Committee, CommitteeWithNetworkMetadata, NetworkMetadata, StakeUnit};
 use crate::crypto::{AuthorityPublicKey, NetworkPublicKey};
 use crate::multiaddr::Multiaddr;
-use anemo::types::{PeerAffinity, PeerInfo};
 use anemo::PeerId;
 use consensus_config::{Authority, Committee as ConsensusCommittee};
-use mys_protocol_config::ProtocolVersion;
 use serde::{Deserialize, Serialize};
-use tracing::{error, warn};
+use mys_protocol_config::ProtocolVersion;
+use tracing::error;
 
 #[enum_dispatch]
 pub trait EpochStartSystemStateTrait {
@@ -28,7 +27,8 @@ pub trait EpochStartSystemStateTrait {
     fn get_mys_committee(&self) -> Committee;
     fn get_mys_committee_with_network_metadata(&self) -> CommitteeWithNetworkMetadata;
     fn get_consensus_committee(&self) -> ConsensusCommittee;
-    fn get_validator_as_p2p_peers(&self, excluding_self: AuthorityName) -> Vec<PeerInfo>;
+    fn get_validator_as_p2p_peers(&self, excluding_self: AuthorityName)
+    -> Vec<(PeerId, Multiaddr)>;
     fn get_authority_names_to_peer_ids(&self) -> HashMap<AuthorityName, PeerId>;
     fn get_authority_names_to_hostnames(&self) -> HashMap<AuthorityName, String>;
 }
@@ -40,7 +40,7 @@ pub trait EpochStartSystemStateTrait {
 /// and fill them with None for older versions. When we absolutely must delete fields, we could
 /// also add new db tables to store the new version. This is OK because we only store one copy of
 /// this as part of EpochStartConfiguration for the most recent epoch in the db.
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 #[enum_dispatch(EpochStartSystemStateTrait)]
 pub enum EpochStartSystemState {
     V1(EpochStartSystemStateV1),
@@ -87,15 +87,15 @@ impl EpochStartSystemState {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub struct EpochStartSystemStateV1 {
-    epoch: EpochId,
-    protocol_version: u64,
-    reference_gas_price: u64,
-    safe_mode: bool,
-    epoch_start_timestamp_ms: u64,
-    epoch_duration_ms: u64,
-    active_validators: Vec<EpochStartValidatorInfoV1>,
+    pub epoch: EpochId,
+    pub protocol_version: u64,
+    pub reference_gas_price: u64,
+    pub safe_mode: bool,
+    pub epoch_start_timestamp_ms: u64,
+    pub epoch_duration_ms: u64,
+    pub active_validators: Vec<EpochStartValidatorInfoV1>,
 }
 
 impl EpochStartSystemStateV1 {
@@ -219,28 +219,16 @@ impl EpochStartSystemStateTrait for EpochStartSystemStateV1 {
         ConsensusCommittee::new(self.epoch as consensus_config::Epoch, authorities)
     }
 
-    fn get_validator_as_p2p_peers(&self, excluding_self: AuthorityName) -> Vec<PeerInfo> {
+    fn get_validator_as_p2p_peers(
+        &self,
+        excluding_self: AuthorityName,
+    ) -> Vec<(PeerId, Multiaddr)> {
         self.active_validators
             .iter()
             .filter(|validator| validator.authority_name() != excluding_self)
             .map(|validator| {
-                let address = validator
-                    .p2p_address
-                    .to_anemo_address()
-                    .into_iter()
-                    .collect::<Vec<_>>();
                 let peer_id = PeerId(validator.narwhal_network_pubkey.0.to_bytes());
-                if address.is_empty() {
-                    warn!(
-                        ?peer_id,
-                        "Peer has invalid p2p address: {}", &validator.p2p_address
-                    );
-                }
-                PeerInfo {
-                    peer_id,
-                    affinity: PeerAffinity::High,
-                    address,
-                }
+                (peer_id, validator.p2p_address.clone())
             })
             .collect()
     }
@@ -294,14 +282,14 @@ impl EpochStartValidatorInfoV1 {
 mod test {
     use crate::base_types::MysAddress;
     use crate::committee::CommitteeTrait;
-    use crate::crypto::{get_key_pair, AuthorityKeyPair, NetworkKeyPair};
-    use crate::mys_system_state::epoch_start_mys_system_state::{
+    use crate::crypto::{AuthorityKeyPair, NetworkKeyPair, get_key_pair};
+    use super::{
         EpochStartSystemStateTrait, EpochStartSystemStateV1, EpochStartValidatorInfoV1,
     };
     use fastcrypto::traits::KeyPair;
-    use mys_protocol_config::ProtocolVersion;
     use mysten_network::Multiaddr;
     use rand::thread_rng;
+    use mys_protocol_config::ProtocolVersion;
 
     #[test]
     fn test_mys_and_mysticeti_committee_are_same() {

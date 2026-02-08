@@ -17,13 +17,13 @@ use tracing::{debug, info};
 use mys_config::object_storage_config::{ObjectStoreConfig, ObjectStoreType};
 use mys_core::authority::authority_store_tables::LiveObject;
 use mys_field_count::FieldCount;
-use mys_indexer_alt_framework::task::TrySpawnStreamExt;
+use mys_futures::stream::TrySpawnStreamExt;
 use mys_indexer_alt_schema::objects::StoredObjInfo;
 use mys_indexer_alt_schema::schema::obj_info;
 use mys_pg_db::Db;
 use mys_snapshot::{
-    reader::{download_bytes, LiveObjectIter, StateSnapshotReaderV1},
     FileMetadata,
+    reader::{LiveObjectIter, StateSnapshotReaderV1, download_bytes},
 };
 use mys_storage::object_store::ObjectStoreGetExt;
 
@@ -62,13 +62,13 @@ impl SnapshotRestorer {
             args.start_epoch,
             &remote_store_config,
             &local_store_config,
-            usize::MAX, // indirect_objects_threshold
+            0, // indirect_objects_threshold
             NonZeroUsize::new(args.concurrency).unwrap(),
             m,
             true, // skip_reset_local_store
         )
         .await?;
-        let db = Db::for_write(args.db_args.clone()).await?;
+        let db = Db::for_write(args.database_url.clone(), args.db_args.clone()).await?;
 
         Ok(Self {
             restore_args: args.clone(),

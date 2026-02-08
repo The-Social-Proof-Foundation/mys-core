@@ -10,7 +10,13 @@
 //! directly to avoid going through the BCS machinery.
 
 use fastcrypto::traits::ToFromBytes;
-use mys_sdk_types::*;
+use mys_sdk_types::{
+    Address, Argument, BalanceChange, Bitmap, Bls12381PublicKey, Bls12381Signature, CheckpointContents,
+    CheckpointData, CheckpointSummary, Command, Digest, Identifier, Object, Owner,
+    SignedCheckpointSummary, SignedTransaction, StructTag, Transaction, TransactionEffects,
+    TransactionEvents, TransactionExpiration, TypeParseError, TypeTag, UnchangedConsensusKind,
+    UserSignature, ValidatorAggregatedSignature, ValidatorCommittee, ValidatorCommitteeMember,
+};
 use tap::Pipe;
 
 #[derive(Debug)]
@@ -85,7 +91,7 @@ bcs_convert_impl!(
 );
 bcs_convert_impl!(crate::signature::GenericSignature, UserSignature);
 bcs_convert_impl!(crate::effects::TransactionEvents, TransactionEvents);
-bcs_convert_impl!(crate::transaction::Command, Command);
+// Note: Command conversion is implemented directly below, not via BCS
 
 impl<const T: bool> From<crate::crypto::AuthorityQuorumSignInfo<T>>
     for ValidatorAggregatedSignature
@@ -100,7 +106,7 @@ impl<const T: bool> From<crate::crypto::AuthorityQuorumSignInfo<T>>
         Self {
             epoch,
             signature: Bls12381Signature::from_bytes(signature.as_ref()).unwrap(),
-            bitmap: signers_map,
+            bitmap: Bitmap::from_iter(signers_map),
         }
     }
 }
@@ -119,7 +125,7 @@ impl<const T: bool> From<ValidatorAggregatedSignature>
             epoch,
             signature: crate::crypto::AggregateAuthoritySignature::from_bytes(signature.as_bytes())
                 .unwrap(),
-            signers_map: bitmap,
+            signers_map: roaring::RoaringBitmap::from_iter(bitmap.iter()),
         }
     }
 }
@@ -133,11 +139,13 @@ impl From<crate::object::Owner> for Owner {
                 initial_shared_version,
             } => Self::Shared(initial_shared_version.value()),
             crate::object::Owner::Immutable => Self::Immutable,
-            // TODO: Corresponding types need to be added to mys-sdk-types.
-            crate::object::Owner::ConsensusV2 {
-                start_version: _,
-                authenticator: _,
-            } => todo!(),
+            crate::object::Owner::ConsensusAddressOwner {
+                start_version,
+                owner,
+            } => Self::ConsensusAddress {
+                start_version: start_version.value(),
+                owner: owner.into(),
+            },
         }
     }
 }
@@ -151,6 +159,14 @@ impl From<Owner> for crate::object::Owner {
                 initial_shared_version: initial_shared_version.into(),
             },
             Owner::Immutable => crate::object::Owner::Immutable,
+            Owner::ConsensusAddress {
+                start_version,
+                owner,
+            } => crate::object::Owner::ConsensusAddressOwner {
+                start_version: start_version.into(),
+                owner: owner.into(),
+            },
+            _ => unreachable!("sdk shouldn't have a variant that the mono repo doesn't"),
         }
     }
 }
@@ -167,27 +183,15 @@ impl From<Address> for crate::base_types::MysAddress {
     }
 }
 
-impl From<crate::base_types::ObjectID> for ObjectId {
+impl From<crate::base_types::ObjectID> for Address {
     fn from(value: crate::base_types::ObjectID) -> Self {
         Self::new(value.into_bytes())
     }
 }
 
-impl From<ObjectId> for crate::base_types::ObjectID {
-    fn from(value: ObjectId) -> Self {
+impl From<Address> for crate::base_types::ObjectID {
+    fn from(value: Address) -> Self {
         Self::new(value.into_inner())
-    }
-}
-
-impl From<crate::base_types::MysAddress> for ObjectId {
-    fn from(value: crate::base_types::MysAddress) -> Self {
-        Self::new(value.to_inner())
-    }
-}
-
-impl From<ObjectId> for crate::base_types::MysAddress {
-    fn from(value: ObjectId) -> Self {
-        crate::base_types::ObjectID::new(value.into_inner()).into()
     }
 }
 
@@ -287,13 +291,7 @@ pub fn struct_tag_core_to_sdk(
         .into_iter()
         .map(type_tag_core_to_sdk)
         .collect::<Result<_, _>>()?;
-    StructTag {
-        address,
-        module,
-        name,
-        type_params,
-    }
-    .pipe(Ok)
+    StructTag::new(address, module, name, type_params).pipe(Ok)
 }
 
 pub fn type_tag_sdk_to_core(
@@ -322,18 +320,17 @@ pub fn type_tag_sdk_to_core(
 pub fn struct_tag_sdk_to_core(
     value: StructTag,
 ) -> Result<move_core_types::language_storage::StructTag, SdkTypeConversionError> {
-    let StructTag {
-        address,
-        module,
-        name,
-        type_params,
-    } = value;
+    let address = value.address();
+    let module = value.module();
+    let name = value.name();
+    let type_params = value.type_params();
 
     let address = move_core_types::account_address::AccountAddress::new(address.into_inner());
-    let module = move_core_types::identifier::Identifier::new(module.into_inner())?;
-    let name = move_core_types::identifier::Identifier::new(name.into_inner())?;
+    let module = move_core_types::identifier::Identifier::new(module.as_str())?;
+    let name = move_core_types::identifier::Identifier::new(name.as_str())?;
     let type_params = type_params
-        .into_iter()
+        .iter()
+        .cloned()
         .map(type_tag_sdk_to_core)
         .collect::<Result<_, _>>()?;
     move_core_types::language_storage::StructTag {
@@ -345,38 +342,74 @@ pub fn struct_tag_sdk_to_core(
     .pipe(Ok)
 }
 
-impl From<crate::messages_checkpoint::CheckpointDigest> for CheckpointDigest {
+impl From<crate::messages_checkpoint::CheckpointDigest> for Digest {
     fn from(value: crate::messages_checkpoint::CheckpointDigest) -> Self {
         Self::new(value.into_inner())
     }
 }
 
-impl From<CheckpointDigest> for crate::messages_checkpoint::CheckpointDigest {
-    fn from(value: CheckpointDigest) -> Self {
+impl From<Digest> for crate::messages_checkpoint::CheckpointDigest {
+    fn from(value: Digest) -> Self {
         Self::new(value.into_inner())
     }
 }
 
-impl From<crate::digests::TransactionDigest> for TransactionDigest {
+impl From<crate::digests::TransactionDigest> for Digest {
     fn from(value: crate::digests::TransactionDigest) -> Self {
         Self::new(value.into_inner())
     }
 }
 
-impl From<TransactionDigest> for crate::digests::TransactionDigest {
-    fn from(value: TransactionDigest) -> Self {
+impl From<Digest> for crate::digests::TransactionDigest {
+    fn from(value: Digest) -> Self {
         Self::new(value.into_inner())
     }
 }
 
-impl From<crate::digests::ObjectDigest> for ObjectDigest {
+impl From<crate::transaction::Argument> for Argument {
+    fn from(value: crate::transaction::Argument) -> Self {
+        match value {
+            crate::transaction::Argument::GasCoin => Self::Gas,
+            crate::transaction::Argument::Input(idx) => Self::Input(idx),
+            crate::transaction::Argument::Result(idx) => Self::Result(idx),
+            crate::transaction::Argument::NestedResult(idx, sub_idx) => {
+                Self::NestedResult(idx, sub_idx)
+            }
+        }
+    }
+}
+
+impl From<Argument> for crate::transaction::Argument {
+    fn from(value: Argument) -> Self {
+        match value {
+            Argument::Gas => Self::GasCoin,
+            Argument::Input(idx) => Self::Input(idx),
+            Argument::Result(idx) => Self::Result(idx),
+            Argument::NestedResult(idx, sub_idx) => Self::NestedResult(idx, sub_idx),
+        }
+    }
+}
+
+impl From<crate::digests::ObjectDigest> for Digest {
     fn from(value: crate::digests::ObjectDigest) -> Self {
         Self::new(value.into_inner())
     }
 }
 
-impl From<ObjectDigest> for crate::digests::ObjectDigest {
-    fn from(value: ObjectDigest) -> Self {
+impl From<Digest> for crate::digests::ObjectDigest {
+    fn from(value: Digest) -> Self {
+        Self::new(value.into_inner())
+    }
+}
+
+impl From<crate::digests::Digest> for Digest {
+    fn from(value: crate::digests::Digest) -> Self {
+        Self::new(value.into_inner())
+    }
+}
+
+impl From<Digest> for crate::digests::Digest {
+    fn from(value: Digest) -> Self {
         Self::new(value.into_inner())
     }
 }
@@ -423,21 +456,20 @@ impl From<Bls12381PublicKey> for crate::crypto::AuthorityPublicKeyBytes {
     }
 }
 
-impl From<UnchangedSharedKind> for crate::effects::UnchangedSharedKind {
-    fn from(value: UnchangedSharedKind) -> Self {
+impl From<UnchangedConsensusKind> for crate::effects::UnchangedSharedKind {
+    fn from(value: UnchangedConsensusKind) -> Self {
         match value {
-            UnchangedSharedKind::ReadOnlyRoot { version, digest } => {
+            UnchangedConsensusKind::ReadOnlyRoot { version, digest } => {
                 Self::ReadOnlyRoot((version.into(), digest.into()))
             }
-            UnchangedSharedKind::MutateDeleted { version } => Self::MutateDeleted(version.into()),
-            UnchangedSharedKind::ReadDeleted { version } => Self::ReadDeleted(version.into()),
-            UnchangedSharedKind::Cancelled { version } => Self::Cancelled(version.into()),
-            UnchangedSharedKind::PerEpochConfig => Self::PerEpochConfig,
+            _ => {
+                panic!("Unsupported UnchangedConsensusKind variant for local effects conversion")
+            }
         }
     }
 }
 
-impl From<crate::effects::UnchangedSharedKind> for UnchangedSharedKind {
+impl From<crate::effects::UnchangedSharedKind> for UnchangedConsensusKind {
     fn from(value: crate::effects::UnchangedSharedKind) -> Self {
         match value {
             crate::effects::UnchangedSharedKind::ReadOnlyRoot((version, digest)) => {
@@ -446,16 +478,6 @@ impl From<crate::effects::UnchangedSharedKind> for UnchangedSharedKind {
                     digest: digest.into(),
                 }
             }
-            crate::effects::UnchangedSharedKind::MutateDeleted(version) => Self::MutateDeleted {
-                version: version.into(),
-            },
-            crate::effects::UnchangedSharedKind::ReadDeleted(version) => Self::ReadDeleted {
-                version: version.into(),
-            },
-            crate::effects::UnchangedSharedKind::Cancelled(version) => Self::Cancelled {
-                version: version.into(),
-            },
-            crate::effects::UnchangedSharedKind::PerEpochConfig => Self::PerEpochConfig,
         }
     }
 }
@@ -465,6 +487,10 @@ impl From<crate::transaction::TransactionExpiration> for TransactionExpiration {
         match value {
             crate::transaction::TransactionExpiration::None => Self::None,
             crate::transaction::TransactionExpiration::Epoch(epoch) => Self::Epoch(epoch),
+            crate::transaction::TransactionExpiration::ValidDuring { .. } => {
+                // ValidDuring is not yet supported in SDK types
+                Self::None
+            }
         }
     }
 }
@@ -474,6 +500,105 @@ impl From<TransactionExpiration> for crate::transaction::TransactionExpiration {
         match value {
             TransactionExpiration::None => Self::None,
             TransactionExpiration::Epoch(epoch) => Self::Epoch(epoch),
+            _ => unreachable!("sdk shouldn't have a variant that the mono repo doesn't"),
         }
+    }
+}
+
+impl From<crate::balance_change::BalanceChange> for BalanceChange {
+    fn from(value: crate::balance_change::BalanceChange) -> Self {
+        let crate::balance_change::BalanceChange {
+            address,
+            coin_type,
+            amount,
+        } = value;
+        Self {
+            address: address.into(),
+            coin_type: type_tag_core_to_sdk(coin_type).unwrap(),
+            amount: amount.into(),
+        }
+    }
+}
+
+impl From<BalanceChange> for crate::balance_change::BalanceChange {
+    fn from(value: BalanceChange) -> Self {
+        let BalanceChange {
+            address,
+            coin_type,
+            amount,
+        } = value;
+        Self {
+            address: address.into(),
+            coin_type: type_tag_sdk_to_core(coin_type).unwrap(),
+            amount: amount.into(),
+        }
+    }
+}
+
+impl From<Command> for crate::transaction::Command {
+    fn from(value: Command) -> Self {
+        use mys_sdk_types::{Command, TransferObjects, SplitCoins, MergeCoins, Publish, MakeMoveVector, Upgrade};
+        match value {
+            Command::MoveCall(move_call) => Self::MoveCall(Box::new(move_call.into())),
+            Command::TransferObjects(TransferObjects { objects, address }) => {
+                Self::TransferObjects(
+                    objects.into_iter().map(Into::into).collect(),
+                    address.into(),
+                )
+            }
+            Command::SplitCoins(SplitCoins { coin, amounts }) => {
+                Self::SplitCoins(coin.into(), amounts.into_iter().map(Into::into).collect())
+            }
+            Command::MergeCoins(MergeCoins {
+                coin,
+                coins_to_merge,
+            }) => Self::MergeCoins(
+                coin.into(),
+                coins_to_merge.into_iter().map(Into::into).collect(),
+            ),
+            Command::Publish(Publish {
+                modules,
+                dependencies,
+            }) => Self::Publish(modules, dependencies.into_iter().map(Into::into).collect()),
+            Command::MakeMoveVector(MakeMoveVector { type_, elements }) => Self::MakeMoveVec(
+                type_.map(Into::into),
+                elements.into_iter().map(Into::into).collect(),
+            ),
+            Command::Upgrade(Upgrade {
+                modules,
+                dependencies,
+                package,
+                ticket,
+            }) => Self::Upgrade(
+                modules,
+                dependencies.into_iter().map(Into::into).collect(),
+                package.into(),
+                ticket.into(),
+            ),
+            _ => unreachable!("sdk shouldn't have a variant that the mono repo doesn't"),
+        }
+    }
+}
+
+impl From<mys_sdk_types::MoveCall> for crate::transaction::ProgrammableMoveCall {
+    fn from(value: mys_sdk_types::MoveCall) -> Self {
+        Self {
+            package: value.package.into(),
+            module: value.module.as_str().into(),
+            function: value.function.as_str().into(),
+            type_arguments: value.type_arguments.into_iter().map(|tag| {
+                let core_tag = type_tag_sdk_to_core(tag).unwrap();
+                crate::type_input::TypeInput::from(core_tag)
+            }).collect(),
+            arguments: value.arguments.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<mys_sdk_types::TypeTag> for crate::type_input::TypeInput {
+    fn from(value: mys_sdk_types::TypeTag) -> Self {
+        use move_core_types::language_storage::TypeTag as CoreTypeTag;
+        let core_tag: CoreTypeTag = type_tag_sdk_to_core(value).unwrap();
+        crate::type_input::TypeInput::from(core_tag)
     }
 }

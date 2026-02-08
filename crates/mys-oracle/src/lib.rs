@@ -19,7 +19,7 @@ use mys_types::parse_mys_type_tag;
 use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use mys_types::quorum_driver_types::NON_RECOVERABLE_ERROR_MSG;
 use mys_types::transaction::{Argument, Transaction};
-use mys_types::transaction::{Command, ObjectArg};
+use mys_types::transaction::{Command, ObjectArg, SharedObjectMutability};
 use mys_types::Identifier;
 use mys_types::{
     base_types::MysAddress,
@@ -703,13 +703,17 @@ async fn get_object_arg(
         Owner::Shared {
             initial_shared_version,
         }
-        | Owner::ConsensusV2 {
+        | Owner::ConsensusAddressOwner {
             start_version: initial_shared_version,
-            authenticator: _,
+            owner: _,
         } => ObjectArg::SharedObject {
             id,
             initial_shared_version,
-            mutable: is_mutable_ref,
+            mutability: if is_mutable_ref {
+                SharedObjectMutability::Mutable
+            } else {
+                SharedObjectMutability::Immutable
+            },
         },
         Owner::AddressOwner(_) | Owner::ObjectOwner(_) | Owner::Immutable => {
             ObjectArg::ImmOrOwnedObject(obj_ref)

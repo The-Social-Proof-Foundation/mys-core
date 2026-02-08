@@ -4,23 +4,29 @@
 
 use crate::MysNode;
 use axum::{
+    Router,
     extract::{Query, State},
     http::StatusCode,
     routing::{get, post},
-    Router,
 };
 use base64::Engine;
+use fastcrypto::encoding::{Encoding, Hex};
+use fastcrypto::traits::ToFromBytes;
 use humantime::parse_duration;
-use mys_types::{
-    base_types::AuthorityName,
-    crypto::{RandomnessPartialSignature, RandomnessRound, RandomnessSignature},
-    error::MysError,
-};
+use mysten_network::Multiaddr;
 use serde::Deserialize;
 use std::sync::Arc;
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     str::FromStr,
+};
+use mys_network::endpoint_manager::{AddressSource, EndpointId};
+use mys_types::{
+    base_types::AuthorityName,
+    crypto::{NetworkPublicKey, RandomnessPartialSignature, RandomnessRound, RandomnessSignature},
+    digests::TransactionDigest,
+    error::MysErrorKind,
+    traffic_control::TrafficControlReconfigParams,
 };
 use telemetry_subscribers::TracingHandle;
 use tokio::sync::oneshot;
@@ -69,7 +75,20 @@ use tracing::info;
 // Inject a full signature from another node, bypassing validity checks.
 //
 //  $ curl 'http://127.0.0.1:1337/randomness-inject-full-sig?round=123&sigs=base64encodedsig'
+//
+// Get the estimated cost of a transaction
+//
+//  $ curl 'http://127.0.0.1:1337/get-tx-cost?tx=<tx_digest>'
+// Reconfigure traffic control policy
+//
+//  $ curl 'http://127.0.0.1:1337/traffic-control?error_threshold=100&spam_threshold=100&dry_run=true'
+//
+// Update endpoint address(es) for a peer
+//
+//  $ curl -X POST 'http://127.0.0.1:1337/update-endpoint?endpoint_type=p2p&id=<hex_encoded_peer_id>&addresses=<multiaddr1>,<multiaddr2>'
+//  $ curl -X POST 'http://127.0.0.1:1337/update-endpoint?endpoint_type=consensus&id=<hex_encoded_network_pubkey>&addresses=<multiaddr1>,<multiaddr2>'
 
+const NO_TRACING_HANDLE: &str = "tracing handle not available";
 const LOGGING_ROUTE: &str = "/logging";
 const TRACING_ROUTE: &str = "/enable-tracing";
 const TRACING_RESET_ROUTE: &str = "/reset-tracing";
@@ -81,14 +100,25 @@ const NODE_CONFIG: &str = "/node-config";
 const RANDOMNESS_PARTIAL_SIGS_ROUTE: &str = "/randomness-partial-sigs";
 const RANDOMNESS_INJECT_PARTIAL_SIGS_ROUTE: &str = "/randomness-inject-partial-sigs";
 const RANDOMNESS_INJECT_FULL_SIG_ROUTE: &str = "/randomness-inject-full-sig";
+const GET_TX_COST_ROUTE: &str = "/get-tx-cost";
+const DUMP_CONSENSUS_TX_COST_ESTIMATES_ROUTE: &str = "/dump-consensus-tx-cost-estimates";
+const TRAFFIC_CONTROL: &str = "/traffic-control";
+const UPDATE_ENDPOINT: &str = "/update-endpoint";
 
 struct AppState {
     node: Arc<MysNode>,
-    tracing_handle: TracingHandle,
+    tracing_handle: Option<TracingHandle>,
 }
 
-pub async fn run_admin_server(node: Arc<MysNode>, port: u16, tracing_handle: TracingHandle) {
-    let filter = tracing_handle.get_log().unwrap();
+pub async fn run_admin_server(
+    node: Arc<MysNode>,
+    port: u16,
+    tracing_handle: Option<TracingHandle>,
+) {
+    let filter = tracing_handle
+        .as_ref()
+        .and_then(|h| h.get_log().ok())
+        .unwrap_or_else(|| NO_TRACING_HANDLE.to_string());
 
     let app_state = AppState {
         node,
@@ -120,6 +150,13 @@ pub async fn run_admin_server(node: Arc<MysNode>, port: u16, tracing_handle: Tra
             RANDOMNESS_INJECT_FULL_SIG_ROUTE,
             post(randomness_inject_full_sig),
         )
+        .route(GET_TX_COST_ROUTE, get(get_tx_cost))
+        .route(
+            DUMP_CONSENSUS_TX_COST_ESTIMATES_ROUTE,
+            get(dump_consensus_tx_cost_estimates),
+        )
+        .route(TRAFFIC_CONTROL, post(traffic_control))
+        .route(UPDATE_ENDPOINT, post(update_endpoint))
         .with_state(Arc::new(app_state));
 
     let socket_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port);
@@ -157,6 +194,10 @@ async fn enable_tracing(
     State(state): State<Arc<AppState>>,
     query: Query<EnableTracing>,
 ) -> (StatusCode, String) {
+    let Some(tracing_handle) = &state.tracing_handle else {
+        return (StatusCode::UNPROCESSABLE_ENTITY, NO_TRACING_HANDLE.into());
+    };
+
     let Query(EnableTracing {
         filter,
         duration,
@@ -167,12 +208,12 @@ async fn enable_tracing(
     let mut response = Vec::new();
 
     if let Some(sample_rate) = sample_rate {
-        state.tracing_handle.update_sampling_rate(sample_rate);
+        tracing_handle.update_sampling_rate(sample_rate);
         response.push(format!("sample rate set to {:?}", sample_rate));
     }
 
     if let Some(trace_file) = trace_file {
-        if let Err(err) = state.tracing_handle.update_trace_file(&trace_file) {
+        if let Err(err) = tracing_handle.update_trace_file(&trace_file) {
             response.push(format!("can't update trace file: {:?}", err));
             return (StatusCode::BAD_REQUEST, response.join("\n"));
         } else {
@@ -195,7 +236,7 @@ async fn enable_tracing(
         return (StatusCode::BAD_REQUEST, response.join("\n"));
     };
 
-    match state.tracing_handle.update_trace_filter(&filter, duration) {
+    match tracing_handle.update_trace_filter(&filter, duration) {
         Ok(()) => {
             response.push(format!("filter set to {:?}", filter));
             response.push(format!("filter will be reset after {:?}", duration));
@@ -209,7 +250,10 @@ async fn enable_tracing(
 }
 
 async fn reset_tracing(State(state): State<Arc<AppState>>) -> (StatusCode, String) {
-    state.tracing_handle.reset_trace();
+    let Some(tracing_handle) = &state.tracing_handle else {
+        return (StatusCode::UNPROCESSABLE_ENTITY, NO_TRACING_HANDLE.into());
+    };
+    tracing_handle.reset_trace();
     (
         StatusCode::OK,
         "tracing filter reset to TRACE_FILTER env var".into(),
@@ -217,7 +261,10 @@ async fn reset_tracing(State(state): State<Arc<AppState>>) -> (StatusCode, Strin
 }
 
 async fn get_filter(State(state): State<Arc<AppState>>) -> (StatusCode, String) {
-    match state.tracing_handle.get_log() {
+    let Some(tracing_handle) = &state.tracing_handle else {
+        return (StatusCode::UNPROCESSABLE_ENTITY, NO_TRACING_HANDLE.into());
+    };
+    match tracing_handle.get_log() {
         Ok(filter) => (StatusCode::OK, filter),
         Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
     }
@@ -227,7 +274,10 @@ async fn set_filter(
     State(state): State<Arc<AppState>>,
     new_filter: String,
 ) -> (StatusCode, String) {
-    match state.tracing_handle.update_log(&new_filter) {
+    let Some(tracing_handle) = &state.tracing_handle else {
+        return (StatusCode::UNPROCESSABLE_ENTITY, NO_TRACING_HANDLE.into());
+    };
+    match tracing_handle.update_log(&new_filter) {
         Ok(()) => {
             info!(filter =% new_filter, "Log filter updated");
             (StatusCode::OK, "".into())
@@ -239,14 +289,8 @@ async fn set_filter(
 async fn capabilities(State(state): State<Arc<AppState>>) -> (StatusCode, String) {
     let epoch_store = state.node.state().load_epoch_store_one_call_per_task();
 
-    // Only one of v1 or v2 will be populated at a time
-    let capabilities = epoch_store.get_capabilities_v1();
-    let mut output = String::new();
-    for capability in capabilities.unwrap_or_default() {
-        output.push_str(&format!("{:?}\n", capability));
-    }
-
     let capabilities = epoch_store.get_capabilities_v2();
+    let mut output = String::new();
     for capability in capabilities.unwrap_or_default() {
         output.push_str(&format!("{:?}\n", capability));
     }
@@ -318,7 +362,7 @@ async fn force_close_epoch(
     let epoch_store = state.node.state().load_epoch_store_one_call_per_task();
     let actual_epoch = epoch_store.epoch();
     if actual_epoch != expected_epoch {
-        let err = MysError::WrongEpoch {
+        let err = MysErrorKind::WrongEpoch {
             expected_epoch,
             actual_epoch,
         };
@@ -443,4 +487,172 @@ async fn randomness_inject_full_sig(
         Ok(Err(e)) => (StatusCode::BAD_REQUEST, e.to_string()),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
     }
+}
+
+#[derive(Deserialize)]
+struct GetTxCost {
+    tx_digest: String,
+}
+
+async fn get_tx_cost(
+    State(state): State<Arc<AppState>>,
+    args: Query<GetTxCost>,
+) -> (StatusCode, String) {
+    let Query(GetTxCost { tx_digest }) = args;
+    let tx_digest = TransactionDigest::from_str(tx_digest.as_str()).unwrap();
+
+    let Some(transaction) = state
+        .node
+        .state()
+        .get_transaction_cache_reader()
+        .get_transaction_block(&tx_digest)
+    else {
+        return (StatusCode::BAD_REQUEST, "Transaction not found".to_string());
+    };
+
+    let Some(cost) = state
+        .node
+        .state()
+        .load_epoch_store_one_call_per_task()
+        .get_estimated_tx_cost(transaction.transaction_data())
+        .await
+    else {
+        return (StatusCode::BAD_REQUEST, "No estimate available".to_string());
+    };
+
+    (StatusCode::OK, cost.to_string())
+}
+
+async fn dump_consensus_tx_cost_estimates(
+    State(state): State<Arc<AppState>>,
+) -> (StatusCode, String) {
+    let epoch_store = state.node.state().load_epoch_store_one_call_per_task();
+    let estimates = epoch_store.get_consensus_tx_cost_estimates().await;
+    (StatusCode::OK, format!("{:#?}", estimates))
+}
+
+async fn traffic_control(
+    State(state): State<Arc<AppState>>,
+    args: Query<TrafficControlReconfigParams>,
+) -> (StatusCode, String) {
+    let Query(params) = args;
+    match state.node.state().reconfigure_traffic_control(params).await {
+        Ok(updated_state) => (
+            StatusCode::OK,
+            format!(
+                "Traffic control configured with:\n\
+                 Error threshold: {:?}\n\
+                 Spam threshold: {:?}\n\
+                 Dry run: {:?}\n",
+                updated_state.error_threshold, updated_state.spam_threshold, updated_state.dry_run
+            ),
+        ),
+        Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
+    }
+}
+
+#[derive(Deserialize)]
+struct UpdateEndpointArgs {
+    endpoint_type: String,
+    id: String,
+    addresses: String,
+}
+
+async fn update_endpoint(
+    State(state): State<Arc<AppState>>,
+    args: Query<UpdateEndpointArgs>,
+) -> (StatusCode, String) {
+    let Query(UpdateEndpointArgs {
+        endpoint_type,
+        id,
+        addresses,
+    }) = args;
+
+    let endpoint_id = match endpoint_type.as_str() {
+        "p2p" => {
+            let peer_id_bytes = match Hex::decode(&id) {
+                Ok(bytes) => bytes,
+                Err(err) => {
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        format!("Invalid id hex encoding: {err}"),
+                    );
+                }
+            };
+
+            let peer_id_bytes: [u8; 32] = match peer_id_bytes.try_into() {
+                Ok(bytes) => bytes,
+                Err(_) => {
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        "p2p id must be 32 bytes".to_string(),
+                    );
+                }
+            };
+
+            EndpointId::P2p(anemo::PeerId(peer_id_bytes))
+        }
+        "consensus" => {
+            let network_pubkey_bytes = match Hex::decode(&id) {
+                Ok(bytes) => bytes,
+                Err(err) => {
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        format!("Invalid id hex encoding: {err}"),
+                    );
+                }
+            };
+
+            let network_pubkey = match NetworkPublicKey::from_bytes(&network_pubkey_bytes) {
+                Ok(key) => key,
+                Err(err) => {
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        format!("Invalid network public key: {err:?}"),
+                    );
+                }
+            };
+
+            EndpointId::Consensus(network_pubkey)
+        }
+        _ => {
+            return (
+                StatusCode::BAD_REQUEST,
+                format!("Unknown endpoint_type: {endpoint_type}"),
+            );
+        }
+    };
+
+    let mut parsed_addresses = Vec::new();
+    for addr_str in addresses.split(',') {
+        let addr_str = addr_str.trim();
+        if addr_str.is_empty() {
+            continue;
+        }
+        match addr_str.parse::<Multiaddr>() {
+            Ok(addr) => parsed_addresses.push(addr),
+            Err(err) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    format!("Invalid address '{addr_str}': {err}"),
+                );
+            }
+        }
+    }
+
+    if let Err(e) = state.node.endpoint_manager().update_endpoint(
+        endpoint_id,
+        AddressSource::Admin,
+        parsed_addresses.clone(),
+    ) {
+        return (StatusCode::BAD_REQUEST, e.to_string());
+    }
+
+    (
+        StatusCode::OK,
+        format!(
+            "Endpoint updated for {endpoint_type} endpoint {id} with {} address(es)\n",
+            parsed_addresses.len(),
+        ),
+    )
 }

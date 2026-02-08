@@ -30,6 +30,7 @@ mod checked {
     };
     use move_core_types::resolver::ModuleResolver;
     use move_core_types::vm_status::StatusCode;
+    use move_core_types::u256::U256;
     use move_core_types::{
         account_address::AccountAddress,
         identifier::IdentStr,
@@ -59,7 +60,8 @@ mod checked {
         move_package::MovePackage,
         object::{Data, MoveObject, Object, ObjectInner, Owner},
         storage::BackingPackageStore,
-        transaction::{Argument, CallArg, ObjectArg},
+        transaction::{Argument, CallArg, FundsWithdrawalArg, ObjectArg, WithdrawFrom},
+        funds_accumulator::Withdrawal,
     };
     use mys_types::{error::command_argument_error, execution_status::CommandArgumentError};
     use tracing::instrument;
@@ -137,6 +139,7 @@ mod checked {
                         &mut linkage_view,
                         &[],
                         &mut input_object_map,
+                        tx_context,
                         call_arg,
                     )
                 })
@@ -1170,8 +1173,8 @@ mod checked {
                 // protected by transaction input checker
                 invariant_violation!("ObjectOwner objects cannot be input")
             }
-            Owner::ConsensusV2 { .. } => {
-                unimplemented!("ConsensusV2 does not exist for this execution version")
+            Owner::ConsensusAddressOwner { .. } => {
+                unimplemented!("ConsensusAddressOwner does not exist for this execution version")
             }
         };
         let owner = obj.owner.clone();
@@ -1216,6 +1219,7 @@ mod checked {
         linkage_view: &mut LinkageView,
         new_packages: &[MovePackage],
         input_object_map: &mut BTreeMap<ObjectID, object_runtime::InputObject>,
+        tx_context: &TxContext,
         call_arg: CallArg,
     ) -> Result<InputValue, ExecutionError> {
         Ok(match call_arg {
@@ -1229,6 +1233,42 @@ mod checked {
                 input_object_map,
                 obj_arg,
             )?,
+            CallArg::FundsWithdrawal(FundsWithdrawalArg {
+                reservation,
+                type_arg,
+                withdraw_from,
+            }) => {
+                let type_arg = type_arg.to_type_tag();
+                let withdrawal_ty = Withdrawal::type_tag(type_arg);
+                let ty = load_type(vm, linkage_view, new_packages, &withdrawal_ty)
+                    .map_err(|e| crate::error::convert_vm_error(e, vm, linkage_view))?;
+                let abilities = vm.get_runtime().get_type_abilities(&ty)
+                    .map_err(|e| crate::error::convert_vm_error(e, vm, linkage_view))?;
+                let loaded_ty = RawValueType::Loaded {
+                    ty,
+                    abilities,
+                    used_in_non_entry_move_call: false,
+                };
+                let owner = match withdraw_from {
+                    WithdrawFrom::Sender => tx_context.sender(),
+                    WithdrawFrom::Sponsor => {
+                        invariant_violation!(
+                            "WithdrawFrom::Sponsor call arg not supported, \
+                            should have been checked at signing"
+                        );
+                    }
+                };
+                debug_assert!({
+                    !abilities.has_key()
+                        && !abilities.has_store()
+                        && !abilities.has_copy()
+                        && abilities.has_drop()
+                });
+                let limit = match reservation {
+                    mys_types::transaction::Reservation::MaxAmountU64(u) => U256::from(u),
+                };
+                InputValue::withdrawal(loaded_ty, owner, limit)
+            }
         })
     }
 
@@ -1253,14 +1293,14 @@ mod checked {
                 /* imm override */ false,
                 id,
             ),
-            ObjectArg::SharedObject { id, mutable, .. } => load_object(
+            ObjectArg::SharedObject { id, mutability, .. } => load_object(
                 protocol_config,
                 vm,
                 state_view,
                 linkage_view,
                 new_packages,
                 input_object_map,
-                /* imm override */ !mutable,
+                /* imm override */ !mutability.is_exclusive(),
                 id,
             ),
             ObjectArg::Receiving((id, version, _)) => {

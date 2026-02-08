@@ -75,8 +75,6 @@ impl ChildObjectResolver for InMemoryTestStore {
         receiving_object_id: &ObjectID,
         receive_object_at_version: SequenceNumber,
         epoch_id: mys_types::committee::EpochId,
-        // TODO: Delete this parameter once table migration is complete.
-        use_object_per_epoch_marker_table_v2: bool,
     ) -> mys_types::error::MysResult<Option<Object>> {
         self.0.with_borrow(|store| {
             store.get_object_received_at_version(
@@ -84,7 +82,6 @@ impl ChildObjectResolver for InMemoryTestStore {
                 receiving_object_id,
                 receive_object_at_version,
                 epoch_id,
-                use_object_per_epoch_marker_table_v2,
             )
         })
     }
@@ -233,12 +230,12 @@ pub fn end_transaction(
                     .or_default()
                     .insert(id);
             }
-            Owner::ConsensusV2 { authenticator, .. } => {
-                // Treat ConsensusV2 objects the same as address-owned for now. This will have
+            Owner::ConsensusAddressOwner { owner, .. } => {
+                // Treat ConsensusAddressOwner objects the same as address-owned for now. This will have
                 // to be revisited when other Authenticators are added.
                 inventories
                     .address_inventories
-                    .entry(*authenticator.as_single_owner())
+                    .entry(owner)
                     .or_default()
                     .entry(ty)
                     .or_default()
@@ -846,11 +843,11 @@ fn transaction_effects(
             Owner::ObjectOwner(o) => transferred_to_object.push((pack_id(id), pack_id(o))),
             Owner::Shared { .. } => shared.push(id),
             Owner::Immutable => frozen.push(id),
-            // Treat ConsensusV2 objects the same as address-owned for now. This will have
+            // Treat ConsensusAddressOwner objects the same as address-owned for now. This will have
             // to be revisited when other Authenticators are added.
-            Owner::ConsensusV2 { authenticator, .. } => transferred_to_account.push((
+            Owner::ConsensusAddressOwner { owner, .. } => transferred_to_account.push((
                 pack_id(id),
-                Value::address((*authenticator.as_single_owner()).into()),
+                Value::address(owner.into()),
             )),
         }
     }

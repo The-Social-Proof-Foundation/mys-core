@@ -111,7 +111,7 @@ pub struct SignatureVerifier {
     pub metrics: Arc<SignatureVerifierMetrics>,
 }
 
-/// Contains two parameters to pass in to verify a ZkLogin signature.
+/// Contains parameters to pass in to verify a ZkLogin signature.
 #[derive(Clone)]
 struct ZkLoginParams {
     /// A list of supported OAuth providers for ZkLogin.
@@ -122,8 +122,14 @@ struct ZkLoginParams {
     pub verify_legacy_zklogin_address: bool,
     // Flag to determine whether zkLogin inside multisig is accepted.
     pub accept_zklogin_in_multisig: bool,
+    // Flag to determine whether passkey inside multisig is accepted.
+    pub accept_passkey_in_multisig: bool,
     /// Value that sets the upper bound for max_epoch in zkLogin signature.
     pub zklogin_max_epoch_upper_bound_delta: Option<u64>,
+    /// Flag to determine whether additional multisig checks are performed.
+    pub additional_multisig_checks: bool,
+    /// Flag to determine whether additional zkLogin public identifier structure is validated.
+    pub validate_zklogin_public_identifier: bool,
 }
 
 impl SignatureVerifier {
@@ -135,7 +141,10 @@ impl SignatureVerifier {
         env: ZkLoginEnv,
         verify_legacy_zklogin_address: bool,
         accept_zklogin_in_multisig: bool,
+        accept_passkey_in_multisig: bool,
         zklogin_max_epoch_upper_bound_delta: Option<u64>,
+        additional_multisig_checks: bool,
+        validate_zklogin_public_identifier: bool,
     ) -> Self {
         Self {
             committee,
@@ -162,7 +171,10 @@ impl SignatureVerifier {
                 env,
                 verify_legacy_zklogin_address,
                 accept_zklogin_in_multisig,
+                accept_passkey_in_multisig,
                 zklogin_max_epoch_upper_bound_delta,
+                additional_multisig_checks,
+                validate_zklogin_public_identifier,
             },
         }
     }
@@ -174,7 +186,10 @@ impl SignatureVerifier {
         zklogin_env: ZkLoginEnv,
         verify_legacy_zklogin_address: bool,
         accept_zklogin_in_multisig: bool,
+        accept_passkey_in_multisig: bool,
         zklogin_max_epoch_upper_bound_delta: Option<u64>,
+        additional_multisig_checks: bool,
+        validate_zklogin_public_identifier: bool,
     ) -> Self {
         Self::new_with_batch_size(
             committee,
@@ -184,7 +199,10 @@ impl SignatureVerifier {
             zklogin_env,
             verify_legacy_zklogin_address,
             accept_zklogin_in_multisig,
+            accept_passkey_in_multisig,
             zklogin_max_epoch_upper_bound_delta,
+            additional_multisig_checks,
+            validate_zklogin_public_identifier,
         )
     }
 
@@ -390,7 +408,10 @@ impl SignatureVerifier {
                     self.zk_login_params.env,
                     self.zk_login_params.verify_legacy_zklogin_address,
                     self.zk_login_params.accept_zklogin_in_multisig,
+                    self.zk_login_params.accept_passkey_in_multisig,
                     self.zk_login_params.zklogin_max_epoch_upper_bound_delta,
+                    self.zk_login_params.additional_multisig_checks,
+                    self.zk_login_params.validate_zklogin_public_identifier,
                 );
                 verify_sender_signed_data_message_signatures(
                     signed_tx,

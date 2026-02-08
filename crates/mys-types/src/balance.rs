@@ -50,6 +50,30 @@ impl Balance {
         s.address == MYS_FRAMEWORK_ADDRESS
             && s.module.as_ident_str() == BALANCE_MODULE_NAME
             && s.name.as_ident_str() == BALANCE_STRUCT_NAME
+            && s.type_params.len() == 1
+    }
+
+    pub fn is_balance_type(type_param: &TypeTag) -> bool {
+        if let TypeTag::Struct(struct_tag) = type_param {
+            Self::is_balance(struct_tag)
+        } else {
+            false
+        }
+    }
+
+    pub fn type_tag(type_param: TypeTag) -> TypeTag {
+        TypeTag::Struct(Box::new(Self::type_(type_param)))
+    }
+
+    /// If the given type is `Balance<T>`, return `Some(T)`.
+    pub fn maybe_get_balance_type_param(ty: &TypeTag) -> Option<TypeTag> {
+        if let TypeTag::Struct(struct_tag) = ty {
+            if Self::is_balance(struct_tag) {
+                assert_eq!(struct_tag.type_params.len(), 1);
+                return Some(struct_tag.type_params[0].clone());
+            }
+        }
+        None
     }
 
     pub fn withdraw(&mut self, amount: u64) -> Result<(), ExecutionError> {
@@ -84,5 +108,32 @@ impl Balance {
                 MoveTypeLayout::U64,
             )]),
         }
+    }
+
+    /// Check if a struct layout represents a `Balance<T>` type with the expected field structure.
+    pub fn is_balance_layout(struct_layout: &MoveStructLayout) -> bool {
+        let ty = &struct_layout.type_;
+
+        if !Self::is_balance(ty) {
+            return false;
+        }
+
+        if ty.type_params.len() != 1 {
+            return false;
+        }
+
+        if struct_layout.fields.len() != 1 {
+            return false;
+        }
+
+        let Some(field) = struct_layout.fields.first() else {
+            return false;
+        };
+
+        if field.name.as_str() != "value" {
+            return false;
+        }
+
+        matches!(field.layout, MoveTypeLayout::U64)
     }
 }

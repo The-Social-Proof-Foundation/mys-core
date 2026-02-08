@@ -9,12 +9,18 @@ mod shared_in_memory_store;
 mod write_store;
 
 use crate::base_types::{
-    ConsensusObjectSequenceKey, FullObjectID, FullObjectRef, TransactionDigest, VersionNumber,
+    ConsensusObjectSequenceKey, FullObjectID, FullObjectRef, MysAddress, TransactionDigest,
+    VersionNumber,
 };
 use crate::committee::EpochId;
-use crate::error::{ExecutionError, MysError};
+use crate::effects::{TransactionEffects, TransactionEffectsAPI};
+use crate::error::{ExecutionError, MysError, MysErrorKind};
 use crate::execution::{DynamicallyLoadedObjectMetadata, ExecutionResults};
+use crate::full_checkpoint_content::ObjectSet;
+use crate::message_envelope::Message;
 use crate::move_package::MovePackage;
+use crate::storage::error::Error as StorageError;
+use crate::transaction::TransactionData;
 use crate::transaction::{SenderSignedData, TransactionDataAPI};
 use crate::{
     base_types::{ObjectID, ObjectRef, SequenceNumber},
@@ -23,20 +29,25 @@ use crate::{
 };
 use itertools::Itertools;
 use move_binary_format::CompiledModule;
-use move_core_types::language_storage::ModuleId;
+use move_core_types::language_storage::{ModuleId, TypeTag};
 pub use object_store_trait::ObjectStore;
-pub use read_store::AccountOwnedObjectInfo;
+pub use read_store::BalanceInfo;
+pub use read_store::BalanceIterator;
 pub use read_store::CoinInfo;
 pub use read_store::DynamicFieldIndexInfo;
+pub use read_store::DynamicFieldIteratorItem;
 pub use read_store::DynamicFieldKey;
+pub use read_store::EpochInfo;
+pub use read_store::OwnedObjectInfo;
 pub use read_store::ReadStore;
 pub use read_store::RpcIndexes;
 pub use read_store::RpcStateReader;
+pub use read_store::TransactionInfo;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 pub use shared_in_memory_store::SharedInMemoryStore;
 pub use shared_in_memory_store::SingleCheckpointSharedInMemoryStore;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 pub use write_store::WriteStore;
@@ -115,12 +126,13 @@ pub enum MarkerValue {
     /// An object was received at the given version in the transaction and is no longer able
     /// to be received at that version in subequent transactions.
     Received,
-    /// An owned object was deleted (or wrapped) at the given version, and is no longer able to be
-    /// accessed or used in subsequent transactions.
-    OwnedDeleted,
-    /// A shared object was deleted by the transaction and is no longer able to be accessed or
-    /// used in subsequent transactions.
-    SharedDeleted(TransactionDigest),
+    /// A fastpath object was deleted, wrapped, or transferred to consensus at the given
+    /// version, and is no longer able to be accessed or used in subsequent transactions via
+    /// fastpath unless/until it is returned to fastpath.
+    FastpathStreamEnded,
+    /// A consensus object was deleted or removed from consensus by the transaction and is no longer
+    /// able to be accessed or used in subsequent transactions with the same initial shared version.
+    ConsensusStreamEnded(TransactionDigest),
 }
 
 /// DeleteKind together with the old sequence number prior to the deletion, if available.
@@ -190,8 +202,6 @@ pub trait ChildObjectResolver {
         receiving_object_id: &ObjectID,
         receive_object_at_version: SequenceNumber,
         epoch_id: EpochId,
-        // TODO: Delete this parameter once table migration is complete.
-        use_object_per_epoch_marker_table_v2: bool,
     ) -> MysResult<Option<Object>>;
 }
 
@@ -209,7 +219,8 @@ pub trait Storage {
 
     fn read_object(&self, id: &ObjectID) -> Option<&Object>;
 
-    fn record_execution_results(&mut self, results: ExecutionResults);
+    fn record_execution_results(&mut self, results: ExecutionResults)
+    -> Result<(), ExecutionError>;
 
     fn save_loaded_runtime_objects(
         &mut self,
@@ -221,9 +232,14 @@ pub trait Storage {
         wrapped_object_containers: BTreeMap<ObjectID, ObjectID>,
     );
 
-    /// Check coin denylist during execution,
-    /// and the number of non-gas-coin owners.
-    fn check_coin_deny_list(&self, written_objects: &BTreeMap<ObjectID, Object>) -> DenyListResult;
+    /// Given the set of all coin types and owners that are receiving the coins during execution,
+    /// Check coin denylist v2, and return the number of non-gas-coin owners.
+    fn check_coin_deny_list(
+        &self,
+        receiving_funds_type_and_owners: BTreeMap<TypeTag, BTreeSet<MysAddress>>,
+    ) -> DenyListResult;
+
+    fn record_generated_object_ids(&mut self, generated_ids: BTreeSet<ObjectID>);
 }
 
 pub type PackageFetchResults<Package> = Result<Vec<Package>, Vec<ObjectID>>;
@@ -290,9 +306,10 @@ pub fn load_package_object_from_object_store(
     if let Some(obj) = &package {
         fp_ensure!(
             obj.is_package(),
-            MysError::BadObjectType {
+            MysErrorKind::BadObjectType {
                 error: format!("Package expected, Move object found: {package_id}"),
             }
+            .into()
         );
     }
     Ok(package.map(PackageObject::new))
@@ -431,8 +448,6 @@ impl<S: ChildObjectResolver> ChildObjectResolver for std::sync::Arc<S> {
         receiving_object_id: &ObjectID,
         receive_object_at_version: SequenceNumber,
         epoch_id: EpochId,
-        // TODO: Delete this parameter once table migration is complete.
-        use_object_per_epoch_marker_table_v2: bool,
     ) -> MysResult<Option<Object>> {
         ChildObjectResolver::get_object_received_at_version(
             self.as_ref(),
@@ -440,7 +455,6 @@ impl<S: ChildObjectResolver> ChildObjectResolver for std::sync::Arc<S> {
             receiving_object_id,
             receive_object_at_version,
             epoch_id,
-            use_object_per_epoch_marker_table_v2,
         )
     }
 }
@@ -460,8 +474,6 @@ impl<S: ChildObjectResolver> ChildObjectResolver for &S {
         receiving_object_id: &ObjectID,
         receive_object_at_version: SequenceNumber,
         epoch_id: EpochId,
-        // TODO: Delete this parameter once table migration is complete.
-        use_object_per_epoch_marker_table_v2: bool,
     ) -> MysResult<Option<Object>> {
         ChildObjectResolver::get_object_received_at_version(
             *self,
@@ -469,7 +481,6 @@ impl<S: ChildObjectResolver> ChildObjectResolver for &S {
             receiving_object_id,
             receive_object_at_version,
             epoch_id,
-            use_object_per_epoch_marker_table_v2,
         )
     }
 }
@@ -489,8 +500,6 @@ impl<S: ChildObjectResolver> ChildObjectResolver for &mut S {
         receiving_object_id: &ObjectID,
         receive_object_at_version: SequenceNumber,
         epoch_id: EpochId,
-        // TODO: Delete this parameter once table migration is complete.
-        use_object_per_epoch_marker_table_v2: bool,
     ) -> MysResult<Option<Object>> {
         ChildObjectResolver::get_object_received_at_version(
             *self,
@@ -498,7 +507,6 @@ impl<S: ChildObjectResolver> ChildObjectResolver for &mut S {
             receiving_object_id,
             receive_object_at_version,
             epoch_id,
-            use_object_per_epoch_marker_table_v2,
         )
     }
 }
@@ -588,18 +596,6 @@ impl FullObjectKey {
             FullObjectKey::Consensus(consensus_object_key) => consensus_object_key.1,
         }
     }
-
-    // Returns the equivalent ObjectKey for this FullObjectKey, discarding any initial
-    // shared version information, if present.
-    // TODO: Delete this function once marker table migration is complete.
-    pub fn into_object_key(self) -> ObjectKey {
-        match self {
-            FullObjectKey::Fastpath(object_key) => object_key,
-            FullObjectKey::Consensus(consensus_object_key) => {
-                ObjectKey(consensus_object_key.0 .0, consensus_object_key.1)
-            }
-        }
-    }
 }
 
 impl From<FullObjectRef> for FullObjectKey {
@@ -687,5 +683,218 @@ where
 {
     fn as_object_store(&self) -> &dyn ObjectStore {
         self
+    }
+}
+
+pub fn get_transaction_input_objects(
+    object_store: &dyn ObjectStore,
+    effects: &TransactionEffects,
+) -> Result<Vec<Object>, StorageError> {
+    let input_object_keys = effects
+        .modified_at_versions()
+        .into_iter()
+        .map(|(object_id, version)| ObjectKey(object_id, version))
+        .collect::<Vec<_>>();
+
+    let input_objects = object_store
+        .multi_get_objects_by_key(&input_object_keys)
+        .into_iter()
+        .enumerate()
+        .map(|(idx, maybe_object)| {
+            maybe_object.ok_or_else(|| {
+                StorageError::custom(format!(
+                    "missing input object key {:?} from tx {} effects {}",
+                    input_object_keys[idx],
+                    effects.transaction_digest(),
+                    effects.digest()
+                ))
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(input_objects)
+}
+
+pub fn get_transaction_output_objects(
+    object_store: &dyn ObjectStore,
+    effects: &TransactionEffects,
+) -> Result<Vec<Object>, StorageError> {
+    let output_object_keys = effects
+        .all_changed_objects()
+        .into_iter()
+        .map(|(object_ref, _owner, _kind)| ObjectKey::from(object_ref))
+        .collect::<Vec<_>>();
+
+    let output_objects = object_store
+        .multi_get_objects_by_key(&output_object_keys)
+        .into_iter()
+        .enumerate()
+        .map(|(idx, maybe_object)| {
+            maybe_object.ok_or_else(|| {
+                StorageError::custom(format!(
+                    "missing output object key {:?} from tx {} effects {}",
+                    output_object_keys[idx],
+                    effects.transaction_digest(),
+                    effects.digest()
+                ))
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(output_objects)
+}
+
+// Returns an iterator over the ObjectKey's of objects read or written by this transaction
+pub fn get_transaction_object_set(
+    transaction: &TransactionData,
+    effects: &TransactionEffects,
+    unchanged_loaded_runtime_objects: &[ObjectKey],
+) -> BTreeSet<ObjectKey> {
+    // enumerate the full set of input objects in order to properly capture immutable objects that
+    // may not appear in the effects.
+    //
+    // This excludes packages
+    let input_objects = transaction
+        .input_objects()
+        .expect("txn was executed and must have valid input objects")
+        .into_iter()
+        .filter_map(|input| {
+            input
+                .version()
+                .map(|version| ObjectKey(input.object_id(), version))
+        });
+
+    // The full set of output/written objects as well as any of their initial versions
+    let modified_set = effects
+        .object_changes()
+        .into_iter()
+        .flat_map(|change| {
+            [
+                change
+                    .input_version
+                    .map(|version| ObjectKey(change.id, version)),
+                change
+                    .output_version
+                    .map(|version| ObjectKey(change.id, version)),
+            ]
+        })
+        .flatten();
+
+    // The set of unchanged consensus objects
+    let unchanged_consensus =
+        effects
+            .unchanged_consensus_objects()
+            .into_iter()
+            .flat_map(|unchanged| {
+                if let crate::effects::UnchangedConsensusKind::ReadOnlyRoot((version, _)) =
+                    unchanged.1
+                {
+                    Some(ObjectKey(unchanged.0, version))
+                } else {
+                    None
+                }
+            });
+
+    input_objects
+        .chain(modified_set)
+        .chain(unchanged_consensus)
+        .chain(unchanged_loaded_runtime_objects.iter().copied())
+        .collect()
+}
+
+// A BackingStore to pass to execution in order to track all objects loaded during execution.
+//
+// Today this is used to very accurately track the objects that were loaded but unchanged during
+// execution.
+pub struct TrackingBackingStore<'a> {
+    inner: &'a dyn crate::storage::BackingStore,
+    read_objects: std::cell::RefCell<ObjectSet>,
+}
+
+impl<'a> TrackingBackingStore<'a> {
+    pub fn new(inner: &'a dyn crate::storage::BackingStore) -> Self {
+        Self {
+            inner,
+            read_objects: Default::default(),
+        }
+    }
+
+    pub fn into_read_objects(self) -> ObjectSet {
+        self.read_objects.into_inner()
+    }
+
+    fn track_object(&self, object: &Object) {
+        self.read_objects.borrow_mut().insert(object.clone());
+    }
+}
+
+impl BackingPackageStore for TrackingBackingStore<'_> {
+    fn get_package_object(
+        &self,
+        package_id: &ObjectID,
+    ) -> crate::error::MysResult<Option<PackageObject>> {
+        self.inner.get_package_object(package_id).inspect(|o| {
+            o.as_ref()
+                .inspect(|package| self.track_object(package.object()));
+        })
+    }
+}
+
+impl ChildObjectResolver for TrackingBackingStore<'_> {
+    fn read_child_object(
+        &self,
+        parent: &ObjectID,
+        child: &ObjectID,
+        child_version_upper_bound: SequenceNumber,
+    ) -> crate::error::MysResult<Option<Object>> {
+        self.inner
+            .read_child_object(parent, child, child_version_upper_bound)
+            .inspect(|o| {
+                o.as_ref().inspect(|object| self.track_object(object));
+            })
+    }
+
+    fn get_object_received_at_version(
+        &self,
+        owner: &ObjectID,
+        receiving_object_id: &ObjectID,
+        receive_object_at_version: SequenceNumber,
+        epoch_id: crate::committee::EpochId,
+    ) -> crate::error::MysResult<Option<Object>> {
+        self.inner
+            .get_object_received_at_version(
+                owner,
+                receiving_object_id,
+                receive_object_at_version,
+                epoch_id,
+            )
+            .inspect(|o| {
+                o.as_ref().inspect(|object| self.track_object(object));
+            })
+    }
+}
+
+impl crate::storage::ObjectStore for TrackingBackingStore<'_> {
+    fn get_object(&self, object_id: &ObjectID) -> Option<Object> {
+        self.inner
+            .get_object(object_id)
+            .inspect(|o| self.track_object(o))
+    }
+
+    fn get_object_by_key(
+        &self,
+        object_id: &ObjectID,
+        version: crate::base_types::VersionNumber,
+    ) -> Option<Object> {
+        self.inner
+            .get_object_by_key(object_id, version)
+            .inspect(|o| self.track_object(o))
+    }
+}
+
+impl ParentSync for TrackingBackingStore<'_> {
+    fn get_latest_parent_entry_ref_deprecated(
+        &self,
+        object_id: ObjectID,
+    ) -> Option<crate::base_types::ObjectRef> {
+        self.inner.get_latest_parent_entry_ref_deprecated(object_id)
     }
 }

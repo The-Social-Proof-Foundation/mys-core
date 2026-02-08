@@ -1,6 +1,5 @@
 #!/bin/bash
 # Copyright (c) Mysten Labs, Inc.
-# Copyright (c) The Social Proof Foundation, LLC.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Update mys-indexer's generated src/schema.rs based on the schema after
@@ -68,7 +67,7 @@ done
 # Run all migrations on the new database, for the framework and the indexer
 diesel migration run                                                          \
   --database-url "postgres://postgres:postgrespw@localhost:$PORT"             \
-  --migration-dir "$REPO/crates/mys-indexer-alt-framework/migrations"
+  --migration-dir "$REPO/crates/mys-pg-db/migrations"
 
 diesel migration run                                                          \
   --database-url "postgres://postgres:postgrespw@localhost:$PORT"             \
@@ -79,5 +78,4 @@ diesel migration run                                                          \
 diesel print-schema                                                           \
   --database-url "postgres://postgres:postgrespw@localhost:$PORT"             \
   --patch-file "$REPO/crates/mys-indexer-alt-schema/schema.patch"             \
-  --except-tables watermarks cp_sequence_numbers                              \
   > "$REPO/crates/mys-indexer-alt-schema/src/schema.rs"

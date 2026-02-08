@@ -30,6 +30,7 @@ use mys_types::transaction::CallArg;
 use mys_types::transaction::GasData;
 use mys_types::transaction::ObjectArg;
 use mys_types::transaction::ProgrammableTransaction;
+use mys_types::transaction::SharedObjectMutability;
 use mys_types::transaction::TransactionData;
 use mys_types::transaction::TransactionDataAPI;
 use tap::Pipe;
@@ -481,7 +482,7 @@ fn resolve_object(
             }
             .pipe(Ok)
         }
-        mys_types::object::Owner::Shared { .. } | mys_types::object::Owner::ConsensusV2 { .. } => {
+        mys_types::object::Owner::Shared { .. } | mys_types::object::Owner::ConsensusAddressOwner { .. } => {
             resolve_shared_input_with_object(called_packages, commands, arg_idx, object)
         }
         mys_types::object::Owner::ObjectOwner(_) => Err(RpcError::new(
@@ -586,7 +587,7 @@ fn resolve_shared_input_with_object(
     let initial_shared_version = if let mys_types::object::Owner::Shared {
         initial_shared_version,
     }
-    | mys_types::object::Owner::ConsensusV2 {
+    | mys_types::object::Owner::ConsensusAddressOwner {
         start_version: initial_shared_version,
         ..
     } = object.owner()
@@ -626,7 +627,11 @@ fn resolve_shared_input_with_object(
     Ok(ObjectArg::SharedObject {
         id: object_id,
         initial_shared_version,
-        mutable,
+        mutability: if mutable {
+            SharedObjectMutability::Mutable
+        } else {
+            SharedObjectMutability::Immutable
+        },
     })
 }
 

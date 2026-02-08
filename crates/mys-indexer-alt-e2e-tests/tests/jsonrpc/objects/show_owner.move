@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-//# init --protocol-version 70 --accounts A B --addresses test=0x0 --simulator
+//# init --protocol-version 108 --accounts A B --addresses test=0x0 --simulator
 
 // 1. Show the owner of an object owned by one address
 // 2. ...owned by another address

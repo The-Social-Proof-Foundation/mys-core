@@ -11,12 +11,13 @@ use crate::base_types::MysAddress;
 use crate::collection_types::{Bag, Table, TableVec, VecMap, VecSet};
 use crate::committee::{CommitteeWithNetworkMetadata, NetworkMetadata};
 use crate::error::MysError;
+use crate::gas::GasCostSummary;
+use crate::storage::ObjectStore;
 use crate::mys_system_state::epoch_start_mys_system_state::EpochStartSystemState;
 use crate::mys_system_state::get_validators_from_table_vec;
 use crate::mys_system_state::mys_system_state_inner_v1::{
     StakeSubsidyV1, StorageFundV1, ValidatorSetV1,
 };
-use crate::storage::ObjectStore;
 use serde::{Deserialize, Serialize};
 
 /// Rust version of the Move mys::mys_system::SystemParametersV2 type
@@ -101,8 +102,21 @@ impl MysSystemStateTrait for MysSystemStateInnerV2 {
         self.parameters.epoch_duration_ms
     }
 
+    fn extra_fields(&self) -> &Bag {
+        &self.extra_fields
+    }
+
     fn safe_mode(&self) -> bool {
         self.safe_mode
+    }
+
+    fn safe_mode_gas_cost_summary(&self) -> GasCostSummary {
+        GasCostSummary {
+            computation_cost: self.safe_mode_computation_rewards.value(),
+            storage_cost: self.safe_mode_storage_rewards.value(),
+            storage_rebate: self.safe_mode_storage_rebates,
+            non_refundable_storage_fee: self.safe_mode_non_refundable_storage_fee,
+        }
     }
 
     fn advance_epoch_safe_mode(&mut self, params: &AdvanceEpochParams) {
@@ -250,12 +264,9 @@ impl MysSystemStateTrait for MysSystemStateInnerV2 {
                 StakeSubsidyV1 {
                     balance: stake_subsidy_balance,
                     distribution_counter: stake_subsidy_distribution_counter,
-                    current_apy_bps: stake_subsidy_current_apy_bps,
+                    current_distribution_amount: stake_subsidy_current_distribution_amount,
                     stake_subsidy_period_length,
                     stake_subsidy_decrease_rate,
-                    max_apy_bps: stake_subsidy_max_apy_bps,
-                    min_apy_bps: stake_subsidy_min_apy_bps,
-                    intended_duration_years: stake_subsidy_intended_duration_years,
                     extra_fields: _,
                 },
             safe_mode,
@@ -285,7 +296,7 @@ impl MysSystemStateTrait for MysSystemStateInnerV2 {
             epoch_duration_ms,
             stake_subsidy_distribution_counter,
             stake_subsidy_balance: stake_subsidy_balance.value(),
-            stake_subsidy_current_apy_bps,
+            stake_subsidy_current_distribution_amount,
             total_stake,
             active_validators: active_validators
                 .into_iter()
@@ -315,9 +326,6 @@ impl MysSystemStateTrait for MysSystemStateInnerV2 {
             validator_low_stake_grace_period,
             stake_subsidy_period_length,
             stake_subsidy_decrease_rate,
-            stake_subsidy_max_apy_bps,
-            stake_subsidy_min_apy_bps,
-            stake_subsidy_intended_duration_years,
         }
     }
 }

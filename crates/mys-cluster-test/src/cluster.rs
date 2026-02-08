@@ -7,11 +7,12 @@ use async_trait::async_trait;
 use mys_config::local_ip_utils::get_available_port;
 use mys_config::Config;
 use mys_config::{PersistedConfig, MYS_KEYSTORE_FILENAME, MYS_NETWORK_CONFIG};
-use mys_graphql_rpc::config::{ConnectionConfig, ServiceConfig};
-use mys_graphql_rpc::test_infra::cluster::start_graphql_server_with_fn_rpc;
-use mys_indexer::test_utils::{
-    start_indexer_jsonrpc_for_testing, start_indexer_writer_for_testing,
-};
+// Old indexer and graphql-rpc architectures removed
+// use mys_graphql_rpc::config::{ConnectionConfig, ServiceConfig};
+// use mys_graphql_rpc::test_infra::cluster::start_graphql_server_with_fn_rpc;
+// use mys_indexer::test_utils::{
+//     start_indexer_jsonrpc_for_testing, start_indexer_writer_for_testing,
+// };
 use mys_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
 use mys_pg_db::temp::TempDb;
 use mys_sdk::mys_client_config::{MysClientConfig, MysEnv};
@@ -224,63 +225,15 @@ impl Cluster for LocalNewCluster {
         // This cluster has fullnode handle, safe to unwrap
         let fullnode_url = test_cluster.fullnode_handle.rpc_url.clone();
 
-        // TODO: with TestCluster supporting indexer backed rpc as well, we can remove the indexer related logic here.
+        // Old indexer architecture removed - mys-indexer crate has been removed
+        if options.with_indexer_and_graphql {
+            return Err(anyhow::anyhow!(
+                "The with_indexer_and_graphql option is no longer supported. The old mys-indexer architecture has been removed."
+            ));
+        }
+        
         let mut cancellation_tokens = vec![];
-        let (database, indexer_url, graphql_url) = if options.with_indexer_and_graphql {
-            let database = TempDb::new()?;
-            let pg_address = database.database().url().as_str().to_owned();
-            let indexer_jsonrpc_address = format!("127.0.0.1:{}", get_available_port("127.0.0.1"));
-            let graphql_address = format!("127.0.0.1:{}", get_available_port("127.0.0.1"));
-            let graphql_url = format!("http://{graphql_address}");
-
-            let (_, _, writer_token) = start_indexer_writer_for_testing(
-                pg_address.clone(),
-                None,
-                None,
-                Some(data_ingestion_path.path().to_path_buf()),
-                None, /* cancel */
-                None, /* start_checkpoint */
-                None, /* end_checkpoint */
-                None, /* social_config */
-            )
-            .await;
-            cancellation_tokens.push(writer_token.drop_guard());
-
-            // Start indexer jsonrpc service
-            let (_, reader_token) = start_indexer_jsonrpc_for_testing(
-                pg_address.clone(),
-                fullnode_url.clone(),
-                indexer_jsonrpc_address.clone(),
-                None, /* cancel */
-            )
-            .await;
-            cancellation_tokens.push(reader_token.drop_guard());
-
-            // Start the graphql service
-            let graphql_address = graphql_address.parse::<SocketAddr>()?;
-            let graphql_connection_config = ConnectionConfig {
-                port: graphql_address.port(),
-                host: graphql_address.ip().to_string(),
-                db_url: pg_address,
-                ..Default::default()
-            };
-
-            start_graphql_server_with_fn_rpc(
-                graphql_connection_config.clone(),
-                Some(fullnode_url.clone()),
-                /* cancellation_token */ None,
-                ServiceConfig::test_defaults(),
-            )
-            .await;
-
-            (
-                Some(database),
-                Some(indexer_jsonrpc_address),
-                Some(graphql_url),
-            )
-        } else {
-            (None, None, None)
-        };
+        let (database, indexer_url, graphql_url) = (None, None, None);
 
         // Let nodes connect to one another
         tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;

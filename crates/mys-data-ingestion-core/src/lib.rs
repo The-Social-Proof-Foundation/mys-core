@@ -14,12 +14,12 @@ mod worker_pool;
 
 use anyhow::Result;
 use async_trait::async_trait;
-pub use executor::{setup_single_workflow, IndexerExecutor, MAX_CHECKPOINTS_IN_PROGRESS};
+pub use executor::{setup_single_workflow, setup_single_workflow_with_options, IndexerExecutor, MAX_CHECKPOINTS_IN_PROGRESS};
 pub use metrics::DataIngestionMetrics;
 use mys_types::full_checkpoint_content::CheckpointData;
 pub use progress_store::{FileProgressStore, ProgressStore, ShimProgressStore};
 pub use reader::ReaderOptions;
-pub use util::create_remote_store_client;
+pub use util::{create_remote_store_client, end_of_epoch_data};
 pub use worker_pool::WorkerPool;
 
 #[async_trait]

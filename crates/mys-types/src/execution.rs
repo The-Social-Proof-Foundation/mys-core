@@ -9,7 +9,7 @@ use crate::{
     is_system_package,
     object::{Data, Object, Owner},
     storage::{BackingPackageStore, ObjectChange},
-    transaction::{Argument, Command},
+    transaction::{Argument, Command, SharedObjectMutability},
     type_input::TypeInput,
 };
 use move_core_types::language_storage::TypeTag;
@@ -35,6 +35,7 @@ pub enum SharedInput {
     Existing(ObjectRef),
     Deleted(DeletedSharedObjectInfo),
     Cancelled((ObjectID, SequenceNumber)),
+    ConsensusStreamEnded((ObjectID, SequenceNumber, SharedObjectMutability, TransactionDigest)),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]

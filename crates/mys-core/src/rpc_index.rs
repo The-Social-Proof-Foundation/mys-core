@@ -316,8 +316,8 @@ impl IndexStoreTables {
                             )?;
                         }
                         Owner::Shared { .. } | Owner::Immutable => {}
-                        // TODO: Implement support for ConsensusV2 objects.
-                        Owner::ConsensusV2 { .. } => todo!(),
+                        // TODO: Implement support for ConsensusAddressOwner objects.
+                        Owner::ConsensusAddressOwner { .. } => todo!(),
                     }
                 }
 
@@ -339,8 +339,8 @@ impl IndexStoreTables {
                                 }
 
                                 Owner::Shared { .. } | Owner::Immutable => {}
-                                // TODO: Implement support for ConsensusV2 objects.
-                                Owner::ConsensusV2 { .. } => todo!(),
+                                // TODO: Implement support for ConsensusAddressOwner objects.
+                                Owner::ConsensusAddressOwner { .. } => todo!(),
                             }
                         }
                     }
@@ -364,8 +364,8 @@ impl IndexStoreTables {
                             }
                         }
                         Owner::Shared { .. } | Owner::Immutable => {}
-                        // TODO: Implement support for ConsensusV2 objects.
-                        Owner::ConsensusV2 { .. } => todo!(),
+                        // TODO: Implement support for ConsensusAddressOwner objects.
+                        Owner::ConsensusAddressOwner { .. } => todo!(),
                     }
                 }
 
@@ -733,8 +733,8 @@ impl<'a> LiveObjectIndexer for RpcLiveObjectIndexer<'a> {
             }
 
             Owner::Shared { .. } | Owner::Immutable => {}
-            // TODO: Implement support for ConsensusV2 objects.
-            Owner::ConsensusV2 { .. } => todo!(),
+            // TODO: Implement support for ConsensusAddressOwner objects.
+            Owner::ConsensusAddressOwner { .. } => todo!(),
         }
 
         // Look for CoinMetadata<T> and TreasuryCap<T> objects

@@ -2,11 +2,16 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use prometheus::core::Collector;
+use prometheus::core::Desc;
+use prometheus::proto::Counter;
+use prometheus::proto::Gauge;
+use prometheus::proto::LabelPair;
+use prometheus::proto::Metric;
+use prometheus::proto::MetricFamily;
+use prometheus::proto::MetricType;
+use prometheus::proto::Summary;
 use mys_pg_db::Db;
-use prometheus::{
-    core::{Collector, Desc},
-    proto::{Counter, Gauge, LabelPair, Metric, MetricFamily, MetricType, Summary},
-};
 
 /// Collects information about the database connection pool.
 pub struct DbConnectionStatsCollector {

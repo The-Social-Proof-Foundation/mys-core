@@ -41,7 +41,7 @@ ttl_cache = "0.5.1"
 eyre = "0.6.8"
 tempfile = "3.3.0"
 parking_lot = { version = "0.12.3", features = ["arc_lock"] }
-tonic = { version = "0.12", features = ["zstd", "transport", "tls-webpki-roots"] }
+tonic.workspace = true
 reqwest = { version = "0.12", default-features = false, features = [
     "http2",
     "json",

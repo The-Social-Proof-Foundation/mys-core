@@ -16,7 +16,7 @@ mod checked {
     use mys_types::metrics::BytecodeVerifierMetrics;
     use mys_types::transaction::{
         CheckedInputObjects, InputObjectKind, InputObjects, ObjectReadResult, ObjectReadResultKind,
-        ReceivingObjectReadResult, ReceivingObjects, TransactionData, TransactionDataAPI,
+        ReceivingObjectReadResult, ReceivingObjects, SharedObjectMutability, TransactionData, TransactionDataAPI,
         TransactionKind,
     };
     use mys_types::{
@@ -308,7 +308,7 @@ mod checked {
                         }
                         .into())
                     }
-                    Owner::Shared { .. } | Owner::ConsensusV2 { .. } => {
+                    Owner::Shared { .. } | Owner::ConsensusAddressOwner { .. } => {
                         fp_bail!(UserInputError::NotSharedObjectError.into())
                     }
                     Owner::Immutable => fp_bail!(UserInputError::MutableParameterExpected {
@@ -409,6 +409,8 @@ mod checked {
                 }
                 // We skip checking a deleted shared object because it no longer exists
                 ObjectReadResultKind::DeletedSharedObject(_, _) => (),
+                // We skip checking consensus stream ended objects since they no longer exist
+                ObjectReadResultKind::ObjectConsensusStreamEnded(_, _) => (),
                 // We skip checking shared objects from cancelled transactions since we are not reading it.
                 ObjectReadResultKind::CancelledTransactionSharedObject(_) => (),
             }
@@ -482,7 +484,7 @@ mod checked {
                             parent_id: owner.into(),
                         });
                     }
-                    Owner::Shared { .. } | Owner::ConsensusV2 { .. } => {
+                    Owner::Shared { .. } | Owner::ConsensusAddressOwner { .. } => {
                         // This object is a mutable consensus object. However the transaction
                         // specifies it as an owned object. This is inconsistent.
                         return Err(UserInputError::NotOwnedObjectError);
@@ -492,7 +494,7 @@ mod checked {
             InputObjectKind::SharedMoveObject {
                 id: MYS_CLOCK_OBJECT_ID,
                 initial_shared_version: MYS_CLOCK_OBJECT_SHARED_VERSION,
-                mutable: true,
+                mutability: SharedObjectMutability::Mutable,
             } => {
                 // Only system transactions can accept the Clock
                 // object as a mutable parameter.
@@ -518,7 +520,7 @@ mod checked {
             }
             InputObjectKind::SharedMoveObject {
                 id: MYS_RANDOMNESS_STATE_OBJECT_ID,
-                mutable: true,
+                mutability: SharedObjectMutability::Mutable,
                 ..
             } => {
                 // Only system transactions can accept the Random
@@ -548,7 +550,7 @@ mod checked {
                     Owner::Shared {
                         initial_shared_version: actual_initial_shared_version,
                     }
-                    | Owner::ConsensusV2 {
+                    | Owner::ConsensusAddressOwner {
                         start_version: actual_initial_shared_version,
                         ..
                     } => {

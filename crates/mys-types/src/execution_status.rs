@@ -217,6 +217,9 @@ pub enum ExecutionFailureStatus {
 
     #[error("Certificate is cancelled because randomness could not be generated this epoch")]
     ExecutionCancelledDueToRandomnessUnavailable,
+
+    #[error("Insufficient funds for funds accumulator withdrawal")]
+    InsufficientFundsForWithdraw,
     // NOTE: if you want to add a new enum,
     // please add it at the end for Rust SDK backward compatibility.
 }

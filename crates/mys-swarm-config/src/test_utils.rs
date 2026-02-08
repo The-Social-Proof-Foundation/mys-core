@@ -13,7 +13,7 @@ use mys_types::{
     messages_checkpoint::{
         CertifiedCheckpointSummary, CheckpointDigest, CheckpointSequenceNumber, CheckpointSummary,
         CheckpointVersionSpecificData, EndOfEpochData, FullCheckpointContents, VerifiedCheckpoint,
-        VerifiedCheckpointContents,
+        VerifiedCheckpointContents, VersionedFullCheckpointContents,
     },
 };
 use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
@@ -251,10 +251,14 @@ impl CommitteeFixture {
 
 pub fn empty_contents() -> VerifiedCheckpointContents {
     VerifiedCheckpointContents::new_unchecked(
-        FullCheckpointContents::new_with_causally_ordered_transactions(std::iter::empty()),
+        VersionedFullCheckpointContents::V1(
+            FullCheckpointContents::new_with_causally_ordered_transactions(std::iter::empty()),
+        ),
     )
 }
 
 pub fn random_contents() -> VerifiedCheckpointContents {
-    VerifiedCheckpointContents::new_unchecked(FullCheckpointContents::random_for_testing())
+    VerifiedCheckpointContents::new_unchecked(
+        VersionedFullCheckpointContents::V1(FullCheckpointContents::random_for_testing()),
+    )
 }

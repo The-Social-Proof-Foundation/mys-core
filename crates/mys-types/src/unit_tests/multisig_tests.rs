@@ -6,16 +6,16 @@ use super::{MultiSigPublicKey, ThresholdUnit, WeightUnit};
 use crate::{
     base_types::MysAddress,
     crypto::{
-        get_key_pair, get_key_pair_from_rng, Ed25519MysSignature, MysKeyPair, MysSignatureInner,
-        PublicKey, Signature, ZkLoginPublicIdentifier,
+        Ed25519MysSignature, PublicKey, Signature, MysKeyPair, MysSignatureInner,
+        ZkLoginPublicIdentifier, get_key_pair, get_key_pair_from_rng,
     },
-    multisig::{as_indices, MultiSig, MAX_SIGNER_IN_MULTISIG},
+    multisig::{MAX_SIGNER_IN_MULTISIG, MultiSig, as_indices},
     multisig_legacy::bitmap_to_u16,
     signature::{AuthenticatorTrait, GenericSignature, VerifyParams},
     signature_verification::VerifiedDigestCache,
     utils::{
-        keys, load_test_vectors, make_transaction_data, make_zklogin_tx, DEFAULT_ADDRESS_SEED,
-        SHORT_ADDRESS_SEED,
+        DEFAULT_ADDRESS_SEED, SHORT_ADDRESS_SEED, keys, load_test_vectors, make_transaction_data,
+        make_zklogin_tx,
     },
     zk_login_authenticator::ZkLoginAuthenticator,
     zk_login_util::DEFAULT_JWK_BYTES,
@@ -25,12 +25,12 @@ use fastcrypto::{
     encoding::{Base64, Encoding},
     traits::ToFromBytes,
 };
-use fastcrypto_zkp::bn254::zk_login::{parse_jwks, JwkId, OIDCProvider, ZkLoginInputs, JWK};
+use fastcrypto_zkp::bn254::zk_login::{JWK, JwkId, OIDCProvider, ZkLoginInputs, parse_jwks};
 use fastcrypto_zkp::bn254::zk_login_api::ZkLoginEnv;
 use fastcrypto_zkp::zk_login_utils::Bn254FrElement;
 use im::hashmap::HashMap as ImHashMap;
 use once_cell::sync::OnceCell;
-use rand::{rngs::StdRng, SeedableRng};
+use rand::{SeedableRng, rngs::StdRng};
 use roaring::RoaringBitmap;
 use shared_crypto::intent::{Intent, IntentMessage, PersonalMessage};
 use std::{str::FromStr, sync::Arc};
@@ -143,20 +143,24 @@ fn test_multisig_pk_new() {
     let pk3 = keys[2].public();
 
     // Fails on weight 0.
-    assert!(MultiSigPublicKey::new(
-        vec![pk1.clone(), pk2.clone(), pk3.clone()],
-        vec![0, 1, 1],
-        2
-    )
-    .is_err());
+    assert!(
+        MultiSigPublicKey::new(
+            vec![pk1.clone(), pk2.clone(), pk3.clone()],
+            vec![0, 1, 1],
+            2
+        )
+        .is_err()
+    );
 
     // Fails on threshold 0.
-    assert!(MultiSigPublicKey::new(
-        vec![pk1.clone(), pk2.clone(), pk3.clone()],
-        vec![1, 1, 1],
-        0
-    )
-    .is_err());
+    assert!(
+        MultiSigPublicKey::new(
+            vec![pk1.clone(), pk2.clone(), pk3.clone()],
+            vec![1, 1, 1],
+            0
+        )
+        .is_err()
+    );
 
     // Fails on incorrect array length.
     assert!(
@@ -215,12 +219,14 @@ fn test_max_sig() {
     }
 
     // multisig_pk with larger that max number of pks fails.
-    assert!(MultiSigPublicKey::new(
-        pks.clone(),
-        vec![WeightUnit::MAX; MAX_SIGNER_IN_MULTISIG + 1],
-        ThresholdUnit::MAX
-    )
-    .is_err());
+    assert!(
+        MultiSigPublicKey::new(
+            pks.clone(),
+            vec![WeightUnit::MAX; MAX_SIGNER_IN_MULTISIG + 1],
+            ThresholdUnit::MAX
+        )
+        .is_err()
+    );
 
     // multisig_pk with unreachable threshold fails.
     assert!(MultiSigPublicKey::new(pks.clone()[..5].to_vec(), vec![3; 5], 16).is_err());
@@ -249,10 +255,12 @@ fn test_max_sig() {
     )
     .unwrap();
     let sig = Signature::new_secure(&msg, &keys[0]).into();
-    assert!(MultiSig::combine(vec![sig; 1], low_threshold_pk)
-        .unwrap()
-        .init_and_validate()
-        .is_ok());
+    assert!(
+        MultiSig::combine(vec![sig; 1], low_threshold_pk)
+            .unwrap()
+            .init_and_validate()
+            .is_ok()
+    );
 }
 
 #[test]
@@ -414,21 +422,33 @@ fn zklogin_in_multisig_works_with_both_addresses() {
     let multisig =
         MultiSig::insecure_new(vec![zklogin_sig.to_compressed().unwrap()], 1, multisig_pk);
 
-    let parsed: ImHashMap<JwkId, JWK> = parse_jwks(DEFAULT_JWK_BYTES, &OIDCProvider::Twitch)
+    let parsed: ImHashMap<JwkId, JWK> = parse_jwks(DEFAULT_JWK_BYTES, &OIDCProvider::Twitch, true)
         .unwrap()
         .into_iter()
         .collect();
 
-    let aux_verify_data = VerifyParams::new(parsed, vec![], ZkLoginEnv::Test, true, true, Some(30));
-    let res = multisig.verify_claims(
-        intent_msg,
-        multisig_address,
-        &aux_verify_data,
-        Arc::new(VerifiedDigestCache::new_empty()),
+    let aux_verify_data = VerifyParams::new(
+        parsed,
+        vec![],
+        ZkLoginEnv::Test,
+        true,
+        true,
+        true,
+        Some(30),
+        true,
+        true, // enable zklogin pk validation
     );
+    let res = multisig
+        .verify_claims(
+            intent_msg,
+            multisig_address,
+            &aux_verify_data,
+            Arc::new(VerifiedDigestCache::new_empty()),
+        )
+        .map_err(|e| e.into_inner());
     // since the zklogin inputs is crafted, it is expected that the proof verify failed, but all checks before passes.
     assert!(
-        matches!(res, Err(crate::error::MysError::InvalidSignature { error }) if error.contains("General cryptographic error: Groth16 proof verify failed"))
+        matches!(res, Err(crate::error::MysErrorKind::InvalidSignature { error }) if error.contains("General cryptographic error: Groth16 proof verify failed"))
     );
 
     // initialize zklogin pk (pk1_padd) with padded address seed
@@ -460,14 +480,16 @@ fn zklogin_in_multisig_works_with_both_addresses() {
         multisig_pk_padded,
     );
 
-    let res = multisig_padded.verify_claims(
-        intent_msg_padded,
-        multisig_address_padded,
-        &aux_verify_data,
-        Arc::new(VerifiedDigestCache::new_empty()),
-    );
+    let res = multisig_padded
+        .verify_claims(
+            intent_msg_padded,
+            multisig_address_padded,
+            &aux_verify_data,
+            Arc::new(VerifiedDigestCache::new_empty()),
+        )
+        .map_err(|e| e.into_inner());
     assert!(
-        matches!(res, Err(crate::error::MysError::InvalidSignature { error }) if error.contains("General cryptographic error: Groth16 proof verify failed"))
+        matches!(res, Err(crate::error::MysErrorKind::InvalidSignature { error }) if error.contains("General cryptographic error: Groth16 proof verify failed"))
     );
 }
 
@@ -498,4 +520,103 @@ fn test_derive_multisig_address() {
         MysAddress::from_str("0x77a9fbf3c695d78dd83449a81a9e70aa79a77dbfd6fb72037bf09201c12052cd")
             .unwrap()
     );
+}
+
+#[test]
+fn test_zklogin_public_identifier_additional_validation() {
+    let ed25519_kp = MysKeyPair::Ed25519(get_key_pair().1);
+    let ed25519_pk = ed25519_kp.public();
+
+    // Craft a malformed zkLogin pk.
+    let iss = OIDCProvider::Twitch.get_config().iss;
+    let iss_bytes = iss.as_bytes();
+    let mut malformed_bytes = Vec::new();
+    malformed_bytes.push(iss_bytes.len() as u8);
+    malformed_bytes.extend_from_slice(iss_bytes);
+    malformed_bytes.extend_from_slice(
+        Bn254FrElement::from_str(DEFAULT_ADDRESS_SEED)
+            .unwrap()
+            .padded(),
+    );
+    malformed_bytes.extend_from_slice(&[0x01, 0x00]); // Add extra bytes: weight=1, flag=0x00 (Ed25519)
+    let malformed_zklogin_pk = PublicKey::ZkLogin(ZkLoginPublicIdentifier(malformed_bytes));
+
+    // Create a multisig t=1 for malformed zkLogin pk and Ed25519 pk.
+    let multisig_pk = MultiSigPublicKey::new(
+        vec![malformed_zklogin_pk, ed25519_pk.clone()],
+        vec![1, 1],
+        1,
+    )
+    .unwrap();
+    let multisig_address = MysAddress::from(&multisig_pk);
+
+    // Create a transaction and sign with Ed25519.
+    let intent_msg = IntentMessage::new(
+        Intent::mys_transaction(),
+        make_transaction_data(multisig_address),
+    );
+    let ed25519_sig = Signature::new_secure(&intent_msg, &ed25519_kp);
+    let generic_sig = GenericSignature::Signature(ed25519_sig);
+
+    // Create multisig signature.
+    let multisig = MultiSig::insecure_new(
+        vec![generic_sig.to_compressed().unwrap()],
+        0b10, // bitmap: use second key (Ed25519)
+        multisig_pk,
+    );
+
+    let parsed: ImHashMap<JwkId, JWK> = parse_jwks(DEFAULT_JWK_BYTES, &OIDCProvider::Twitch, true)
+        .unwrap()
+        .into_iter()
+        .collect();
+
+    // Validation enabled, rejected.
+    let verify_params_with_validation = VerifyParams::new(
+        parsed.clone(),
+        vec![],
+        ZkLoginEnv::Test,
+        true,
+        true,
+        true,
+        Some(30),
+        true,
+        true,
+    );
+
+    let res_with_validation = multisig.verify_claims(
+        &intent_msg,
+        multisig_address,
+        &verify_params_with_validation,
+        Arc::new(VerifiedDigestCache::new_empty()),
+    );
+
+    assert!(res_with_validation.is_err());
+    let err = res_with_validation.unwrap_err().into_inner();
+    match &err {
+        crate::error::MysErrorKind::InvalidSignature { error } => {
+            assert!(error.contains("address seed must be at most 32 bytes"),);
+        }
+        _ => panic!("Expected InvalidSignature, got: {:?}", err),
+    }
+
+    // Without valiation should pass.
+    let verify_params_without_validation = VerifyParams::new(
+        parsed,
+        vec![],
+        ZkLoginEnv::Test,
+        true,
+        true,
+        true,
+        Some(30),
+        true,
+        false, // Disable validation
+    );
+
+    let res_without_validation = multisig.verify_claims(
+        &intent_msg,
+        multisig_address,
+        &verify_params_without_validation,
+        Arc::new(VerifiedDigestCache::new_empty()),
+    );
+    assert!(res_without_validation.is_ok());
 }

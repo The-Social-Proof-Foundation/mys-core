@@ -2,40 +2,40 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-mod response_ext;
+use bytes::Bytes;
+use futures::stream::Stream;
+use futures::stream::TryStreamExt;
 use prost_types::FieldMask;
-pub use response_ext::ResponseExt;
-
-use tap::Pipe;
-use tonic::metadata::MetadataMap;
-
-use crate::proto::node::v2::node_service_client::NodeServiceClient;
-use crate::proto::node::v2::{
-    ExecuteTransactionResponse, GetCheckpointResponse, GetFullCheckpointResponse, GetObjectResponse,
-};
-use crate::proto::types::Bcs;
-use crate::proto::TryFromProtoError;
-use crate::types::ExecuteTransactionOptions;
-use mys_types::base_types::{ObjectID, SequenceNumber};
+use std::time::Duration;
+use mys_rpc::field::FieldMaskUtil;
+use mys_rpc::proto::TryFromProtoError;
+use mys_rpc::proto::mys::rpc::v2::{self as proto, GetServiceInfoRequest};
+use mys_types::base_types::{ObjectID, SequenceNumber, MysAddress};
+use mys_types::digests::ChainIdentifier;
+use mys_types::digests::TransactionDigest;
 use mys_types::effects::{TransactionEffects, TransactionEvents};
-use mys_types::full_checkpoint_content::CheckpointData;
+use mys_types::full_checkpoint_content::Checkpoint;
 use mys_types::messages_checkpoint::{CertifiedCheckpointSummary, CheckpointSequenceNumber};
 use mys_types::object::Object;
 use mys_types::transaction::Transaction;
+use mys_types::transaction::TransactionData;
+use tap::Pipe;
+use tonic::Status;
+use tonic::metadata::MetadataMap;
+
+pub use mys_rpc::client::HeadersInterceptor;
+pub use mys_rpc::client::ResponseExt;
 
 pub type Result<T, E = tonic::Status> = std::result::Result<T, E>;
 pub type BoxError = Box<dyn std::error::Error + Send + Sync + 'static>;
 
-use tonic::transport::channel::ClientTlsConfig;
-use tonic::Status;
+pub struct Page<T> {
+    pub items: Vec<T>,
+    pub next_page_token: Option<Bytes>,
+}
 
 #[derive(Clone)]
-pub struct Client {
-    #[allow(unused)]
-    uri: http::Uri,
-    channel: tonic::transport::Channel,
-    auth: AuthInterceptor,
-}
+pub struct Client(mys_rpc::Client);
 
 impl Client {
     pub fn new<T>(uri: T) -> Result<Self>
@@ -43,148 +43,84 @@ impl Client {
         T: TryInto<http::Uri>,
         T::Error: Into<BoxError>,
     {
-        let uri = uri
-            .try_into()
-            .map_err(Into::into)
-            .map_err(Status::from_error)?;
-        let mut endpoint = tonic::transport::Endpoint::from(uri.clone());
-        if uri.scheme() == Some(&http::uri::Scheme::HTTPS) {
-            endpoint = endpoint
-                .tls_config(ClientTlsConfig::new().with_enabled_roots())
-                .map_err(Into::into)
-                .map_err(Status::from_error)?;
-        }
-        let channel = endpoint.connect_lazy();
-
-        Ok(Self {
-            uri,
-            channel,
-            auth: Default::default(),
-        })
+        mys_rpc::Client::new(uri).map(Self)
     }
 
-    pub fn with_auth(mut self, auth: AuthInterceptor) -> Self {
-        self.auth = auth;
-        self
+    pub fn with_headers(self, headers: HeadersInterceptor) -> Self {
+        Self(self.0.with_headers(headers))
     }
 
-    pub fn raw_client(
-        &self,
-    ) -> NodeServiceClient<
-        tonic::service::interceptor::InterceptedService<tonic::transport::Channel, AuthInterceptor>,
-    > {
-        NodeServiceClient::with_interceptor(self.channel.clone(), self.auth.clone())
+    pub fn inner_mut(&mut self) -> &mut mys_rpc::Client {
+        &mut self.0
     }
 
-    pub async fn get_latest_checkpoint(&self) -> Result<CertifiedCheckpointSummary> {
+    pub fn into_inner(self) -> mys_rpc::Client {
+        self.0
+    }
+
+    pub async fn get_latest_checkpoint(&mut self) -> Result<CertifiedCheckpointSummary> {
         self.get_checkpoint_internal(None).await
     }
 
     pub async fn get_checkpoint_summary(
-        &self,
+        &mut self,
         sequence_number: CheckpointSequenceNumber,
     ) -> Result<CertifiedCheckpointSummary> {
         self.get_checkpoint_internal(Some(sequence_number)).await
     }
 
     async fn get_checkpoint_internal(
-        &self,
+        &mut self,
         sequence_number: Option<CheckpointSequenceNumber>,
     ) -> Result<CertifiedCheckpointSummary> {
-        let request = crate::proto::node::v2::GetCheckpointRequest {
-            sequence_number,
-            digest: None,
-            options: Some(crate::proto::node::v2::GetCheckpointOptions {
-                summary: Some(false),
-                summary_bcs: Some(true),
-                signature: Some(true),
-                contents: Some(false),
-                contents_bcs: Some(false),
-            }),
-            read_mask: Some(FieldMask {
-                paths: ["summary_bcs", "signature"]
-                    .into_iter()
-                    .map(ToOwned::to_owned)
-                    .collect(),
-            }),
-        };
+        let mut request = proto::GetCheckpointRequest::default()
+            .with_read_mask(FieldMask::from_paths(["summary.bcs", "signature"]));
+        request.checkpoint_id = sequence_number.map(|sequence_number| {
+            proto::get_checkpoint_request::CheckpointId::SequenceNumber(sequence_number)
+        });
 
-        let (
-            metadata,
-            GetCheckpointResponse {
-                summary_bcs,
-                signature,
-                ..
-            },
-            _extentions,
-        ) = self
-            .raw_client()
+        let (metadata, checkpoint, _extentions) = self
+            .0
+            .ledger_client()
             .get_checkpoint(request)
             .await?
             .into_parts();
 
-        certified_checkpoint_summary_try_from_proto(summary_bcs, signature)
+        let checkpoint = checkpoint
+            .checkpoint
+            .ok_or_else(|| tonic::Status::not_found("no checkpoint returned"))?;
+        certified_checkpoint_summary_try_from_proto(&checkpoint)
             .map_err(|e| status_from_error_with_metadata(e, metadata))
     }
 
     pub async fn get_full_checkpoint(
-        &self,
+        &mut self,
         sequence_number: CheckpointSequenceNumber,
-    ) -> Result<CheckpointData> {
-        let request = crate::proto::node::v2::GetFullCheckpointRequest {
-            sequence_number: Some(sequence_number),
-            digest: None,
-            options: Some(crate::proto::node::v2::GetFullCheckpointOptions {
-                summary: Some(false),
-                summary_bcs: Some(true),
-                signature: Some(true),
-                contents: Some(false),
-                contents_bcs: Some(true),
-                transaction: Some(false),
-                transaction_bcs: Some(true),
-                effects: Some(false),
-                effects_bcs: Some(true),
-                events: Some(false),
-                events_bcs: Some(true),
-                input_objects: Some(true),
-                output_objects: Some(true),
-                object: Some(false),
-                object_bcs: Some(true),
-            }),
-            read_mask: Some(FieldMask {
-                paths: [
-                    "summary_bcs",
-                    "signature",
-                    "contents_bcs",
-                    "transactions.transaction_bcs",
-                    "transactions.effects_bcs",
-                    "transactions.events_bcs",
-                    "transactions.input_objects.object_bcs",
-                    "transactions.output_objects.object_bcs",
-                ]
-                .into_iter()
-                .map(ToOwned::to_owned)
-                .collect(),
-            }),
-        };
+    ) -> Result<Checkpoint> {
+        let request = proto::GetCheckpointRequest::by_sequence_number(sequence_number)
+            .with_read_mask(Checkpoint::proto_field_mask());
 
         let (metadata, response, _extentions) = self
-            .raw_client()
-            .max_decoding_message_size(64 * 1024 * 1024)
-            .get_full_checkpoint(request)
+            .0
+            .ledger_client()
+            .max_decoding_message_size(128 * 1024 * 1024)
+            .get_checkpoint(request)
             .await?
             .into_parts();
 
-        checkpoint_data_try_from_proto(response)
+        let checkpoint = response
+            .checkpoint
+            .ok_or_else(|| tonic::Status::not_found("no checkpoint returned"))?;
+        mys_types::full_checkpoint_content::Checkpoint::try_from(&checkpoint)
             .map_err(|e| status_from_error_with_metadata(e, metadata))
     }
 
-    pub async fn get_object(&self, object_id: ObjectID) -> Result<Object> {
+    pub async fn get_object(&mut self, object_id: ObjectID) -> Result<Object> {
         self.get_object_internal(object_id, None).await
     }
 
     pub async fn get_object_with_version(
-        &self,
+        &mut self,
         object_id: ObjectID,
         version: SequenceNumber,
     ) -> Result<Object> {
@@ -193,101 +129,599 @@ impl Client {
     }
 
     async fn get_object_internal(
-        &self,
+        &mut self,
         object_id: ObjectID,
         version: Option<u64>,
     ) -> Result<Object> {
-        let request = crate::proto::node::v2::GetObjectRequest {
-            object_id: Some(mys_sdk_types::ObjectId::from(object_id).into()),
-            version,
-            options: Some(crate::proto::node::v2::GetObjectOptions {
-                object: Some(false),
-                object_bcs: Some(true),
-            }),
-            read_mask: Some(FieldMask {
-                paths: ["object_bcs"].into_iter().map(ToOwned::to_owned).collect(),
-            }),
-        };
+        let mut request = proto::GetObjectRequest::new(&object_id.into())
+            .with_read_mask(FieldMask::from_paths(["bcs"]));
+        request.version = version;
 
-        let (metadata, GetObjectResponse { object_bcs, .. }, _extentions) =
-            self.raw_client().get_object(request).await?.into_parts();
+        let (metadata, object, _extentions) = self
+            .0
+            .ledger_client()
+            .get_object(request)
+            .await?
+            .into_parts();
 
-        object_try_from_proto(object_bcs).map_err(|e| status_from_error_with_metadata(e, metadata))
+        let object = object
+            .object
+            .ok_or_else(|| tonic::Status::not_found("no object returned"))?;
+        object_try_from_proto(&object).map_err(|e| status_from_error_with_metadata(e, metadata))
+    }
+
+    pub async fn batch_get_objects(&self, ids: &[ObjectID]) -> Result<Vec<Object>> {
+        let request = proto::BatchGetObjectsRequest::default()
+            .with_requests(
+                ids.iter()
+                    .map(|id| proto::GetObjectRequest::new(&(*id).into()))
+                    .collect(),
+            )
+            .with_read_mask(FieldMask::from_paths(["bcs"]));
+
+        let (metadata, response, _extentions) = self
+            .0
+            .clone()
+            .ledger_client()
+            .batch_get_objects(request)
+            .await?
+            .into_parts();
+
+        let objects = response
+            .objects
+            .into_iter()
+            .map(|o| o.to_result())
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| Status::not_found(e.message))?;
+
+        let objects = objects
+            .iter()
+            .map(object_try_from_proto)
+            .collect::<Result<_, _>>()
+            .map_err(|e| status_from_error_with_metadata(e, metadata))?;
+        Ok(objects)
     }
 
     pub async fn execute_transaction(
-        &self,
-        parameters: &ExecuteTransactionOptions,
+        &mut self,
         transaction: &Transaction,
-    ) -> Result<TransactionExecutionResponse> {
-        let signatures = transaction
-            .inner()
-            .tx_signatures
-            .iter()
-            .map(|signature| signature.as_ref().to_vec().into())
-            .collect();
-
-        let request = crate::proto::node::v2::ExecuteTransactionRequest {
-            transaction: None,
-            transaction_bcs: Some(
-                crate::proto::types::Bcs::serialize(&transaction.inner().intent_message.value)
-                    .map_err(|e| Status::from_error(e.into()))?,
-            ),
-            signatures: Vec::new(),
-            signatures_bytes: signatures,
-
-            options: Some(crate::proto::node::v2::ExecuteTransactionOptions {
-                effects: Some(false),
-                effects_bcs: Some(true),
-                events: Some(false),
-                events_bcs: Some(true),
-                ..(parameters.to_owned().into())
-            }),
-            read_mask: Some(FieldMask {
-                paths: ["effects_bcs", "events_bcs", "balance_changes"]
-                    .into_iter()
-                    .map(ToOwned::to_owned)
-                    .collect(),
-            }),
-        };
+    ) -> Result<ExecutedTransaction> {
+        let request = Self::create_executed_transaction_request(transaction)?;
 
         let (metadata, response, _extentions) = self
-            .raw_client()
+            .0
+            .execution_client()
             .execute_transaction(request)
             .await?
             .into_parts();
 
-        execute_transaction_response_try_from_proto(response)
+        execute_transaction_response_try_from_proto(&response)
             .map_err(|e| status_from_error_with_metadata(e, metadata))
+    }
+
+    pub async fn execute_transaction_and_wait_for_checkpoint(
+        &self,
+        transaction: &Transaction,
+    ) -> Result<ExecutedTransaction> {
+        const WAIT_FOR_CHECKPOINT_TIMEOUT: Duration = Duration::from_secs(30);
+
+        let request = Self::create_executed_transaction_request(transaction)?;
+
+        let (metadata, response, _extentions) = self
+            .0
+            .clone()
+            .execute_transaction_and_wait_for_checkpoint(request, WAIT_FOR_CHECKPOINT_TIMEOUT)
+            .await
+            .map_err(|e| Status::from_error(e.into()))?
+            .into_parts();
+
+        execute_transaction_response_try_from_proto(&response)
+            .map_err(|e| status_from_error_with_metadata(e, metadata))
+    }
+
+    fn create_executed_transaction_request(
+        transaction: &Transaction,
+    ) -> Result<proto::ExecuteTransactionRequest> {
+        let signatures = transaction
+            .inner()
+            .tx_signatures
+            .iter()
+            .map(|signature| {
+                let mut message = proto::UserSignature::default();
+                message.bcs = Some(signature.as_ref().to_vec().into());
+                message
+            })
+            .collect();
+
+        let request = proto::ExecuteTransactionRequest::new({
+            let mut tx = proto::Transaction::default();
+            tx.bcs = Some(
+                proto::Bcs::serialize(&transaction.inner().intent_message.value)
+                    .map_err(|e| Status::from_error(e.into()))?,
+            );
+            tx
+        })
+        .with_signatures(signatures)
+        .with_read_mask(ExecutedTransaction::proto_read_mask());
+
+        Ok(request)
+    }
+
+    pub async fn simulate_transaction(
+        &self,
+        tx: &TransactionData,
+        checks: bool,
+    ) -> Result<SimulateTransactionResponse> {
+        let mut request = proto::SimulateTransactionRequest::default();
+        request.set_checks(if checks {
+            proto::simulate_transaction_request::TransactionChecks::Enabled
+        } else {
+            proto::simulate_transaction_request::TransactionChecks::Disabled
+        });
+        request.set_transaction(
+            proto::Transaction::default()
+                .with_bcs(proto::Bcs::serialize(&tx).map_err(|e| Status::from_error(e.into()))?),
+        );
+
+        let (metadata, response, _extentions) = self
+            .0
+            .clone()
+            .execution_client()
+            .simulate_transaction(request)
+            .await?
+            .into_parts();
+
+        let transaction = executed_transaction_try_from_proto(response.transaction())
+            .map_err(|e| status_from_error_with_metadata(e, metadata))?;
+
+        Ok(SimulateTransactionResponse {
+            transaction,
+            command_outputs: response.command_outputs,
+        })
+    }
+
+    pub async fn get_transaction(
+        &mut self,
+        digest: &TransactionDigest,
+    ) -> Result<ExecutedTransaction> {
+        let request = proto::GetTransactionRequest::new(&(*digest).into())
+            .with_read_mask(ExecutedTransaction::proto_read_mask());
+
+        let (metadata, resp, _extentions) = self
+            .0
+            .ledger_client()
+            .get_transaction(request)
+            .await?
+            .into_parts();
+
+        let transaction = resp
+            .transaction
+            .ok_or_else(|| tonic::Status::not_found("no transaction returned"))?;
+        executed_transaction_try_from_proto(&transaction)
+            .map_err(|e| status_from_error_with_metadata(e, metadata))
+    }
+
+    pub async fn get_chain_identifier(&self) -> Result<ChainIdentifier> {
+        let response = self
+            .0
+            .clone()
+            .ledger_client()
+            .get_service_info(GetServiceInfoRequest::default())
+            .await?
+            .into_inner();
+        let chain_id = response
+            .chain_id()
+            .parse::<mys_sdk_types::Digest>()
+            .map_err(|e| TryFromProtoError::invalid("chain_id", e))
+            .map_err(|e| Status::from_error(e.into()))?;
+
+        Ok(ChainIdentifier::from(
+            mys_types::digests::CheckpointDigest::from(chain_id),
+        ))
+    }
+
+    pub async fn get_owned_objects(
+        &self,
+        owner: MysAddress,
+        object_type: Option<move_core_types::language_storage::StructTag>,
+        page_size: Option<u32>,
+        page_token: Option<Bytes>,
+    ) -> Result<Page<Object>> {
+        let mut request = proto::ListOwnedObjectsRequest::default()
+            .with_owner(owner.to_string())
+            .with_read_mask(FieldMask::from_paths(["bcs"]));
+        if let Some(object_type) = object_type {
+            request.set_object_type(object_type.to_canonical_string(true));
+        }
+
+        if let Some(page_size) = page_size {
+            request.set_page_size(page_size);
+        }
+
+        if let Some(page_token) = page_token {
+            request.set_page_token(page_token);
+        }
+
+        let (metadata, response, _extentions) = self
+            .0
+            .clone()
+            .state_client()
+            .list_owned_objects(request)
+            .await?
+            .into_parts();
+
+        let objects = response
+            .objects()
+            .iter()
+            .map(object_try_from_proto)
+            .collect::<Result<_, _>>()
+            .map_err(|e| status_from_error_with_metadata(e, metadata))?;
+
+        Ok(Page {
+            items: objects,
+            next_page_token: response.next_page_token,
+        })
+    }
+
+    pub fn list_owned_objects(
+        &self,
+        owner: MysAddress,
+        object_type: Option<move_core_types::language_storage::StructTag>,
+    ) -> impl Stream<Item = Result<Object>> + 'static {
+        let mut request = proto::ListOwnedObjectsRequest::default()
+            .with_owner(owner.to_string())
+            .with_read_mask(FieldMask::from_paths(["bcs"]));
+
+        if let Some(object_type) = object_type {
+            request.set_object_type(object_type.to_canonical_string(true));
+        }
+
+        self.0
+            .list_owned_objects(request)
+            .and_then(|object| async move {
+                object_try_from_proto(&object).map_err(|e| Status::from_error(e.into()))
+            })
+    }
+
+    pub async fn get_dynamic_fields(
+        &self,
+        parent: ObjectID,
+        page_size: Option<u32>,
+        page_token: Option<Bytes>,
+    ) -> Result<proto::ListDynamicFieldsResponse> {
+        let mut request = proto::ListDynamicFieldsRequest::default()
+            .with_parent(parent.to_string())
+            .with_read_mask(FieldMask::from_paths(["*"]));
+
+        if let Some(page_size) = page_size {
+            request.set_page_size(page_size);
+        }
+
+        if let Some(page_token) = page_token {
+            request.set_page_token(page_token);
+        }
+
+        let response = self
+            .0
+            .clone()
+            .state_client()
+            .list_dynamic_fields(request)
+            .await?
+            .into_inner();
+
+        Ok(response)
+    }
+
+    pub async fn get_reference_gas_price(&self) -> Result<u64> {
+        let request = proto::GetEpochRequest::default()
+            .with_read_mask(FieldMask::from_paths(["epoch", "reference_gas_price"]));
+
+        let response = self
+            .0
+            .clone()
+            .ledger_client()
+            .get_epoch(request)
+            .await?
+            .into_inner();
+
+        Ok(response.epoch().reference_gas_price())
+    }
+
+    /// Wait for a transaction to be available in the ledger AND indexed (equivalent to WaitForLocalExecution)
+    pub async fn wait_for_transaction(
+        &self,
+        digest: &mys_types::digests::TransactionDigest,
+    ) -> Result<(), anyhow::Error> {
+        const WAIT_FOR_LOCAL_EXECUTION_TIMEOUT: Duration = Duration::from_secs(30);
+        const WAIT_FOR_LOCAL_EXECUTION_DELAY: Duration = Duration::from_millis(200);
+        const WAIT_FOR_LOCAL_EXECUTION_INTERVAL: Duration = Duration::from_millis(500);
+
+        let mut client = self.0.clone();
+        let mut client = client.ledger_client();
+
+        tokio::time::timeout(WAIT_FOR_LOCAL_EXECUTION_TIMEOUT, async {
+            // Apply a short delay to give the full node a chance to catch up.
+            tokio::time::sleep(WAIT_FOR_LOCAL_EXECUTION_DELAY).await;
+
+            let mut interval = tokio::time::interval(WAIT_FOR_LOCAL_EXECUTION_INTERVAL);
+            loop {
+                interval.tick().await;
+
+                let request = proto::GetTransactionRequest::default()
+                    .with_digest(digest.to_string())
+                    .with_read_mask(prost_types::FieldMask::from_paths(["digest", "checkpoint"]));
+
+                if let Ok(response) = client.get_transaction(request).await {
+                    let tx = response.into_inner().transaction;
+                    if let Some(executed_tx) = tx {
+                        // Check that transaction is indexed (checkpoint field is populated)
+                        if executed_tx.checkpoint.is_some() {
+                            break;
+                        }
+                    }
+                }
+            }
+        })
+        .await
+        .map_err(|_| anyhow::anyhow!("Timeout waiting for transaction indexing: {}", digest))?;
+
+        Ok(())
+    }
+
+    pub async fn get_protocol_config(&self, epoch: Option<u64>) -> Result<proto::ProtocolConfig> {
+        let mut request = proto::GetEpochRequest::default();
+        if let Some(epoch) = epoch {
+            request.set_epoch(epoch);
+        }
+        request.set_read_mask(FieldMask::from_paths([
+            proto::Epoch::path_builder().epoch(),
+            proto::Epoch::path_builder().protocol_config().finish(),
+        ]));
+        let mut response = self
+            .0
+            .clone()
+            .ledger_client()
+            .get_epoch(request)
+            .await?
+            .into_inner();
+
+        Ok(response
+            .epoch_mut()
+            .protocol_config
+            .take()
+            .unwrap_or_default())
+    }
+
+    pub async fn get_system_state(&self, epoch: Option<u64>) -> Result<Box<proto::SystemState>> {
+        let mut request = proto::GetEpochRequest::default();
+        if let Some(epoch) = epoch {
+            request.set_epoch(epoch);
+        }
+        request.set_read_mask(FieldMask::from_paths([
+            proto::Epoch::path_builder().epoch(),
+            proto::Epoch::path_builder().system_state().finish(),
+        ]));
+        let mut response = self
+            .0
+            .clone()
+            .ledger_client()
+            .get_epoch(request)
+            .await?
+            .into_inner();
+
+        Ok(response.epoch_mut().system_state.take().unwrap_or_default())
+    }
+
+    pub async fn get_system_state_summary(
+        &self,
+        epoch: Option<u64>,
+    ) -> Result<mys_types::mys_system_state::mys_system_state_summary::MysSystemStateSummary> {
+        let system_state = self.get_system_state(epoch).await?;
+        system_state
+            .as_ref()
+            .try_into()
+            .map_err(|e: TryFromProtoError| tonic::Status::from_error(e.into()))
+    }
+
+    pub async fn get_committee(
+        &self,
+        epoch: Option<u64>,
+    ) -> Result<mys_types::committee::Committee> {
+        let mut request = proto::GetEpochRequest::default();
+        if let Some(epoch) = epoch {
+            request.set_epoch(epoch);
+        }
+        request.set_read_mask(FieldMask::from_paths([
+            proto::Epoch::path_builder().epoch(),
+            proto::Epoch::path_builder().committee().finish(),
+        ]));
+        let response = self
+            .0
+            .clone()
+            .ledger_client()
+            .get_epoch(request)
+            .await?
+            .into_inner();
+
+        response
+            .epoch()
+            .committee()
+            .try_into()
+            .map_err(|e: TryFromProtoError| tonic::Status::from_error(e.into()))
+    }
+
+    pub async fn get_coin_info(
+        &self,
+        coin_type: &move_core_types::language_storage::StructTag,
+    ) -> Result<proto::GetCoinInfoResponse> {
+        let resp = self
+            .0
+            .clone()
+            .state_client()
+            .get_coin_info(
+                proto::GetCoinInfoRequest::default()
+                    .with_coin_type(coin_type.to_canonical_string(true)),
+            )
+            .await?
+            .into_inner();
+        Ok(resp)
+    }
+
+    pub async fn get_balance(
+        &self,
+        owner: MysAddress,
+        coin_type: &move_core_types::language_storage::StructTag,
+    ) -> Result<proto::Balance> {
+        let resp = self
+            .0
+            .clone()
+            .state_client()
+            .get_balance(
+                proto::GetBalanceRequest::default()
+                    .with_owner(owner.to_string())
+                    .with_coin_type(coin_type.to_canonical_string(true)),
+            )
+            .await?
+            .into_inner();
+
+        Ok(resp.balance.unwrap_or_default())
+    }
+
+    pub fn list_balances(
+        &self,
+        owner: MysAddress,
+    ) -> impl Stream<Item = Result<proto::Balance>> + 'static {
+        self.0
+            .list_balances(proto::ListBalancesRequest::default().with_owner(owner.to_string()))
+    }
+
+    pub async fn list_delegated_stake(
+        &self,
+        owner: MysAddress,
+    ) -> Result<Vec<mys_rpc::client::DelegatedStake>> {
+        self.0.clone().list_delegated_stake(&owner.into()).await
+    }
+
+    pub fn transaction_builder(&self) -> mys_transaction_builder::TransactionBuilder {
+        mys_transaction_builder::TransactionBuilder::new(std::sync::Arc::new(self.clone()) as _)
     }
 }
 
-#[derive(Debug)]
-pub struct TransactionExecutionResponse {
-    pub finality: crate::types::EffectsFinality,
-
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct ExecutedTransaction {
+    pub transaction: TransactionData,
     pub effects: TransactionEffects,
+    pub clever_error: Option<proto::CleverError>,
     pub events: Option<TransactionEvents>,
+    pub changed_objects: Vec<proto::ChangedObject>,
+    #[allow(unused)]
+    unchanged_loaded_runtime_objects: Vec<proto::ObjectReference>,
     pub balance_changes: Vec<mys_sdk_types::BalanceChange>,
+    pub checkpoint: Option<u64>,
+    #[allow(unused)]
+    #[serde(skip)]
+    timestamp: Option<prost_types::Timestamp>,
 }
 
-/// Attempts to parse `CertifiedCheckpointSummary` from the bcs fields in `GetCheckpointResponse`
+impl ExecutedTransaction {
+    fn proto_read_mask() -> FieldMask {
+        use proto::ExecutedTransaction;
+        FieldMask::from_paths([
+            ExecutedTransaction::path_builder()
+                .transaction()
+                .bcs()
+                .finish(),
+            ExecutedTransaction::path_builder().effects().bcs().finish(),
+            ExecutedTransaction::path_builder()
+                .effects()
+                .status()
+                .error()
+                .abort()
+                .clever_error()
+                .finish(),
+            ExecutedTransaction::path_builder()
+                .effects()
+                .unchanged_loaded_runtime_objects()
+                .finish(),
+            ExecutedTransaction::path_builder()
+                .effects()
+                .changed_objects()
+                .finish(),
+            ExecutedTransaction::path_builder().events().bcs().finish(),
+            ExecutedTransaction::path_builder()
+                .balance_changes()
+                .finish(),
+            ExecutedTransaction::path_builder().checkpoint(),
+            ExecutedTransaction::path_builder().timestamp(),
+        ])
+    }
+
+    pub fn get_new_package_obj(&self) -> Option<mys_types::base_types::ObjectRef> {
+        use mys_rpc::proto::mys::rpc::v2::changed_object::OutputObjectState;
+
+        self.changed_objects
+            .iter()
+            .find(|o| matches!(o.output_state(), OutputObjectState::PackageWrite))
+            .and_then(|o| {
+                let id = o.object_id().parse().ok()?;
+                let version = o.output_version().into();
+                let digest = o.output_digest().parse().ok()?;
+                Some((id, version, digest))
+            })
+    }
+
+    pub fn get_new_package_upgrade_cap(&self) -> Option<mys_types::base_types::ObjectRef> {
+        use mys_rpc::proto::mys::rpc::v2::changed_object::OutputObjectState;
+        use mys_rpc::proto::mys::rpc::v2::owner::OwnerKind;
+
+        const UPGRADE_CAP: &str = "0x0000000000000000000000000000000000000000000000000000000000000002::package::UpgradeCap";
+
+        self.changed_objects
+            .iter()
+            .find(|o| {
+                matches!(o.output_state(), OutputObjectState::ObjectWrite)
+                    && matches!(
+                        o.output_owner().kind(),
+                        OwnerKind::Address | OwnerKind::ConsensusAddress
+                    )
+                    && o.object_type() == UPGRADE_CAP
+            })
+            .and_then(|o| {
+                let id = o.object_id().parse().ok()?;
+                let version = o.output_version().into();
+                let digest = o.output_digest().parse().ok()?;
+                Some((id, version, digest))
+            })
+    }
+}
+
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct SimulateTransactionResponse {
+    pub transaction: ExecutedTransaction,
+    pub command_outputs: Vec<proto::CommandResult>,
+}
+
+/// Attempts to parse `CertifiedCheckpointSummary` from a proto::Checkpoint
+#[allow(clippy::result_large_err)]
 fn certified_checkpoint_summary_try_from_proto(
-    summary_bcs: Option<Bcs>,
-    signature: Option<crate::proto::types::ValidatorAggregatedSignature>,
+    checkpoint: &proto::Checkpoint,
 ) -> Result<CertifiedCheckpointSummary, TryFromProtoError> {
-    let summary = summary_bcs
-        .ok_or_else(|| TryFromProtoError::missing("summary_bcs"))?
+    let summary = checkpoint
+        .summary
+        .as_ref()
+        .and_then(|summary| summary.bcs.as_ref())
+        .ok_or_else(|| TryFromProtoError::missing("summary.bcs"))?
         .deserialize()
-        .map_err(TryFromProtoError::from_error)?;
+        .map_err(|e| TryFromProtoError::invalid("summary.bcs", e))?;
 
     let signature = mys_types::crypto::AuthorityStrongQuorumSignInfo::from(
         mys_sdk_types::ValidatorAggregatedSignature::try_from(
-            signature
+            checkpoint
+                .signature
                 .as_ref()
                 .ok_or_else(|| TryFromProtoError::missing("signature"))?,
         )
-        .map_err(TryFromProtoError::from_error)?,
+        .map_err(|e| TryFromProtoError::invalid("signature", e))?,
     );
 
     Ok(CertifiedCheckpointSummary::new_from_data_and_sig(
@@ -295,129 +729,79 @@ fn certified_checkpoint_summary_try_from_proto(
     ))
 }
 
-/// Attempts to parse `CheckpointData` from the bcs fields in `GetFullCheckpointResponse`
-fn checkpoint_data_try_from_proto(
-    GetFullCheckpointResponse {
-        summary_bcs,
-        signature,
-        contents_bcs,
-        transactions,
-        ..
-    }: GetFullCheckpointResponse,
-) -> Result<CheckpointData, TryFromProtoError> {
-    let checkpoint_summary = certified_checkpoint_summary_try_from_proto(summary_bcs, signature)?;
-
-    let checkpoint_contents = contents_bcs
-        .ok_or_else(|| TryFromProtoError::missing("contents_bcs"))?
-        .deserialize::<mys_types::messages_checkpoint::CheckpointContents>()
-        .map_err(TryFromProtoError::from_error)?;
-
-    let transactions = transactions
-        .into_iter()
-        .zip(
-            checkpoint_contents
-                .clone()
-                .into_iter_with_signatures()
-                .map(|(_digests, signatures)| signatures),
-        )
-        .map(
-            |(
-                crate::proto::node::v2::FullCheckpointTransaction {
-                    transaction_bcs,
-                    effects_bcs,
-                    events_bcs,
-                    input_objects,
-                    output_objects,
-                    ..
-                },
-                signatures,
-            )| {
-                let transaction = transaction_bcs
-                    .ok_or_else(|| TryFromProtoError::missing("transaction_bcs"))?
-                    .deserialize()
-                    .map_err(TryFromProtoError::from_error)?;
-                let transaction = Transaction::from_generic_sig_data(transaction, signatures);
-                let effects = effects_bcs
-                    .ok_or_else(|| TryFromProtoError::missing("effects_bcs"))?
-                    .deserialize()
-                    .map_err(TryFromProtoError::from_error)?;
-                let events = events_bcs
-                    .map(|bcs| bcs.deserialize())
-                    .transpose()
-                    .map_err(TryFromProtoError::from_error)?;
-                let input_objects = input_objects
-                    .into_iter()
-                    .map(|object| object_try_from_proto(object.object_bcs))
-                    .collect::<Result<_, TryFromProtoError>>()?;
-
-                let output_objects = output_objects
-                    .into_iter()
-                    .map(|object| object_try_from_proto(object.object_bcs))
-                    .collect::<Result<_, TryFromProtoError>>()?;
-
-                Result::<_, TryFromProtoError>::Ok(
-                    mys_types::full_checkpoint_content::CheckpointTransaction {
-                        transaction,
-                        effects,
-                        events,
-                        input_objects,
-                        output_objects,
-                    },
-                )
-            },
-        )
-        .collect::<Result<_, _>>()?;
-
-    Ok(CheckpointData {
-        checkpoint_summary,
-        checkpoint_contents,
-        transactions,
-    })
-}
-
 /// Attempts to parse `Object` from the bcs fields in `GetObjectResponse`
-fn object_try_from_proto(object_bcs: Option<Bcs>) -> Result<Object, TryFromProtoError> {
-    object_bcs
+#[allow(clippy::result_large_err)]
+fn object_try_from_proto(object: &proto::Object) -> Result<Object, TryFromProtoError> {
+    object
+        .bcs
         .as_ref()
-        .ok_or_else(|| TryFromProtoError::missing("object_bcs"))?
+        .ok_or_else(|| TryFromProtoError::missing("bcs"))?
         .deserialize()
-        .map_err(TryFromProtoError::from_error)
+        .map_err(|e| TryFromProtoError::invalid("bcs", e))
 }
 
-/// Attempts to parse `TransactionExecutionResponse` from the fields in `TransactionExecutionResponse`
+/// Attempts to parse `ExecutedTransaction` from the fields in `proto::ExecuteTransactionResponse`
+#[allow(clippy::result_large_err)]
 fn execute_transaction_response_try_from_proto(
-    ExecuteTransactionResponse {
-        finality,
-        effects_bcs,
-        events_bcs,
-        balance_changes,
-        ..
-    }: ExecuteTransactionResponse,
-) -> Result<TransactionExecutionResponse, TryFromProtoError> {
-    let finality = finality
+    response: &proto::ExecuteTransactionResponse,
+) -> Result<ExecutedTransaction, TryFromProtoError> {
+    let executed_transaction = response
+        .transaction
         .as_ref()
-        .ok_or_else(|| TryFromProtoError::missing("finality"))?
-        .try_into()?;
+        .ok_or_else(|| TryFromProtoError::missing("transaction"))?;
 
-    let effects = effects_bcs
-        .ok_or_else(|| TryFromProtoError::missing("effects_bcs"))?
+    executed_transaction_try_from_proto(executed_transaction)
+}
+
+#[allow(clippy::result_large_err)]
+fn executed_transaction_try_from_proto(
+    executed_transaction: &proto::ExecutedTransaction,
+) -> Result<ExecutedTransaction, TryFromProtoError> {
+    let transaction = executed_transaction
+        .transaction()
+        .bcs()
         .deserialize()
-        .map_err(TryFromProtoError::from_error)?;
-    let events = events_bcs
+        .map_err(|e| TryFromProtoError::invalid("transaction.bcs", e))?;
+
+    let effects = executed_transaction
+        .effects()
+        .bcs()
+        .deserialize()
+        .map_err(|e| TryFromProtoError::invalid("effects.bcs", e))?;
+    let clever_error = executed_transaction
+        .effects()
+        .status()
+        .error()
+        .abort()
+        .clever_error_opt()
+        .cloned();
+    let events = executed_transaction
+        .events
+        .as_ref()
+        .and_then(|events| events.bcs.as_ref())
         .map(|bcs| bcs.deserialize())
         .transpose()
-        .map_err(TryFromProtoError::from_error)?;
+        .map_err(|e| TryFromProtoError::invalid("events.bcs", e))?;
 
-    let balance_changes = balance_changes
+    let balance_changes = executed_transaction
+        .balance_changes
         .iter()
         .map(TryInto::try_into)
         .collect::<Result<_, _>>()?;
 
-    TransactionExecutionResponse {
-        finality,
+    ExecutedTransaction {
+        transaction,
         effects,
+        clever_error,
         events,
         balance_changes,
+        checkpoint: executed_transaction.checkpoint,
+        changed_objects: executed_transaction.effects().changed_objects().to_owned(),
+        unchanged_loaded_runtime_objects: executed_transaction
+            .effects()
+            .unchanged_loaded_runtime_objects()
+            .to_owned(),
+        timestamp: executed_transaction.timestamp,
     }
     .pipe(Ok)
 }
@@ -428,61 +812,28 @@ fn status_from_error_with_metadata<T: Into<BoxError>>(err: T, metadata: Metadata
     status
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct AuthInterceptor {
-    auth: Option<tonic::metadata::MetadataValue<tonic::metadata::Ascii>>,
-}
-
-impl AuthInterceptor {
-    /// Enable HTTP basic authentication with a username and optional password.
-    pub fn basic<U, P>(username: U, password: Option<P>) -> Self
-    where
-        U: std::fmt::Display,
-        P: std::fmt::Display,
-    {
-        use base64::prelude::BASE64_STANDARD;
-        use base64::write::EncoderWriter;
-        use std::io::Write;
-
-        let mut buf = b"Basic ".to_vec();
-        {
-            let mut encoder = EncoderWriter::new(&mut buf, &BASE64_STANDARD);
-            let _ = write!(encoder, "{username}:");
-            if let Some(password) = password {
-                let _ = write!(encoder, "{password}");
-            }
-        }
-        let mut header = tonic::metadata::MetadataValue::try_from(buf)
-            .expect("base64 is always valid HeaderValue");
-        header.set_sensitive(true);
-
-        Self { auth: Some(header) }
+#[async_trait::async_trait]
+impl mys_transaction_builder::DataReader for Client {
+    async fn get_owned_objects(
+        &self,
+        address: MysAddress,
+        object_type: move_core_types::language_storage::StructTag,
+    ) -> Result<Vec<mys_types::base_types::ObjectInfo>, anyhow::Error> {
+        self.list_owned_objects(address, Some(object_type))
+            .map_ok(|o| mys_types::base_types::ObjectInfo::from_object(&o))
+            .try_collect()
+            .await
+            .map_err(Into::into)
     }
 
-    /// Enable HTTP bearer authentication.
-    pub fn bearer<T>(token: T) -> Self
-    where
-        T: std::fmt::Display,
-    {
-        let header_value = format!("Bearer {token}");
-        let mut header = tonic::metadata::MetadataValue::try_from(header_value)
-            .expect("token is always valid HeaderValue");
-        header.set_sensitive(true);
-
-        Self { auth: Some(header) }
+    async fn get_object(&self, object_id: ObjectID) -> Result<Object, anyhow::Error> {
+        let mut client = self.clone();
+        Self::get_object(&mut client, object_id)
+            .await
+            .map_err(Into::into)
     }
-}
 
-impl tonic::service::Interceptor for AuthInterceptor {
-    fn call(
-        &mut self,
-        mut request: tonic::Request<()>,
-    ) -> std::result::Result<tonic::Request<()>, Status> {
-        if let Some(auth) = self.auth.clone() {
-            request
-                .metadata_mut()
-                .insert(http::header::AUTHORIZATION.as_str(), auth);
-        }
-        Ok(request)
+    async fn get_reference_gas_price(&self) -> Result<u64, anyhow::Error> {
+        self.get_reference_gas_price().await.map_err(Into::into)
     }
 }

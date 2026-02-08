@@ -208,9 +208,9 @@ impl MoveValue {
         blob: &'b [u8],
         ty: &'l MoveTypeLayout,
         visitor: &mut V,
-    ) -> AResult<V::Value>
+    ) -> Result<V::Value, V::Error>
     where
-        V::Error: std::error::Error + Send + Sync + 'static,
+        V::Error: std::error::Error + Send + Sync + 'static + From<VError>,
     {
         let mut bytes = Cursor::new(blob);
         let res = visit_value(&mut bytes, ty, visitor)?;
@@ -275,9 +275,9 @@ impl MoveStruct {
         blob: &'b [u8],
         ty: &'l MoveStructLayout,
         visitor: &mut V,
-    ) -> AResult<V::Value>
+    ) -> Result<V::Value, V::Error>
     where
-        V::Error: std::error::Error + Send + Sync + 'static,
+        V::Error: std::error::Error + Send + Sync + 'static + From<VError>,
     {
         let mut bytes = Cursor::new(blob);
         let driver = ValueDriver::new(&mut bytes, None);

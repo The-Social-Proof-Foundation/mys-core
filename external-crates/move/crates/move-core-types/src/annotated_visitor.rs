@@ -11,6 +11,145 @@ use crate::{
     VARIANT_COUNT_MAX,
 };
 
+/// Macro to generate visitor implementations that return a default value.
+///
+/// The macro can either be invoked for a single visit method:
+///
+/// ```rust,no_doc
+/// visitor_default! { u8<'b, 'l> = $default }
+/// ```
+///
+/// Or for multiple methods sharing a default value:
+///
+/// ```rust,no_doc
+/// visitor_default! { <'b, 'l> u8, u16, u32 = $default }
+/// ```
+#[macro_export]
+macro_rules! visitor_default {
+    (u8<$b:lifetime, $l:lifetime> = $default:expr) => {
+        fn visit_u8(
+            &mut self,
+            _: &$crate::annotated_visitor::ValueDriver<'_, $b, $l>,
+            _: u8,
+        ) -> Result<Self::Value, Self::Error> {
+            $default
+        }
+    };
+
+    (u16<$b:lifetime, $l:lifetime> = $default:expr) => {
+        fn visit_u16(
+            &mut self,
+            _: &$crate::annotated_visitor::ValueDriver<'_, $b, $l>,
+            _: u16,
+        ) -> Result<Self::Value, Self::Error> {
+            $default
+        }
+    };
+
+    (u32<$b:lifetime, $l:lifetime> = $default:expr) => {
+        fn visit_u32(
+            &mut self,
+            _: &$crate::annotated_visitor::ValueDriver<'_, $b, $l>,
+            _: u32,
+        ) -> Result<Self::Value, Self::Error> {
+            $default
+        }
+    };
+
+    (u64<$b:lifetime, $l:lifetime> = $default:expr) => {
+        fn visit_u64(
+            &mut self,
+            _: &$crate::annotated_visitor::ValueDriver<'_, $b, $l>,
+            _: u64,
+        ) -> Result<Self::Value, Self::Error> {
+            $default
+        }
+    };
+
+    (u128<$b:lifetime, $l:lifetime> = $default:expr) => {
+        fn visit_u128(
+            &mut self,
+            _: &$crate::annotated_visitor::ValueDriver<'_, $b, $l>,
+            _: u128,
+        ) -> Result<Self::Value, Self::Error> {
+            $default
+        }
+    };
+
+    (u256<$b:lifetime, $l:lifetime> = $default:expr) => {
+        fn visit_u256(
+            &mut self,
+            _: &$crate::annotated_visitor::ValueDriver<'_, $b, $l>,
+            _: $crate::u256::U256,
+        ) -> Result<Self::Value, Self::Error> {
+            $default
+        }
+    };
+
+    (bool<$b:lifetime, $l:lifetime> = $default:expr) => {
+        fn visit_bool(
+            &mut self,
+            _: &$crate::annotated_visitor::ValueDriver<'_, $b, $l>,
+            _: bool,
+        ) -> Result<Self::Value, Self::Error> {
+            $default
+        }
+    };
+
+    (address<$b:lifetime, $l:lifetime> = $default:expr) => {
+        fn visit_address(
+            &mut self,
+            _: &$crate::annotated_visitor::ValueDriver<'_, $b, $l>,
+            _: $crate::account_address::AccountAddress,
+        ) -> Result<Self::Value, Self::Error> {
+            $default
+        }
+    };
+
+    (signer<$b:lifetime, $l:lifetime> = $default:expr) => {
+        fn visit_signer(
+            &mut self,
+            _: &$crate::annotated_visitor::ValueDriver<'_, $b, $l>,
+            _: $crate::account_address::AccountAddress,
+        ) -> Result<Self::Value, Self::Error> {
+            $default
+        }
+    };
+
+    (vector<$b:lifetime, $l:lifetime> = $default:expr) => {
+        fn visit_vector(
+            &mut self,
+            _: &mut $crate::annotated_visitor::VecDriver<'_, $b, $l>,
+        ) -> Result<Self::Value, Self::Error> {
+            $default
+        }
+    };
+
+    (struct<$b:lifetime, $l:lifetime> = $default:expr) => {
+        fn visit_struct(
+            &mut self,
+            _: &mut $crate::annotated_visitor::StructDriver<'_, $b, $l>,
+        ) -> Result<Self::Value, Self::Error> {
+            $default
+        }
+    };
+
+    (variant<$b:lifetime, $l:lifetime> = $default:expr) => {
+        fn visit_variant(
+            &mut self,
+            _: &mut $crate::annotated_visitor::VariantDriver<'_, $b, $l>,
+        ) -> Result<Self::Value, Self::Error> {
+            $default
+        }
+    };
+
+    (<$b:lifetime, $l:lifetime> $($fn:ident),* = $default:expr) => {
+        $(visitor_default! { $fn<$b, $l> = $default })*
+    }
+}
+
+pub use visitor_default;
+
 /// Visitors can be used for building values out of a serialized Move struct or value.
 pub trait Visitor<'b, 'l> {
     type Value;
@@ -348,7 +487,7 @@ pub struct VariantDriver<'c, 'b, 'l> {
     off: u64,
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Copy, Clone)]
 pub enum Error {
     #[error("unexpected end of input")]
     UnexpectedEof,
@@ -456,6 +595,13 @@ impl<'c, 'b, 'l> VecDriver<'c, 'b, 'l> {
         self.inner.remaining_bytes()
     }
 
+    /// Type layout for the value being visited. May produce an error if a layout was not supplied
+    /// when the driver was created (which should only happen if the driver was created for
+    /// visiting a struct specifically).
+    pub fn layout(&self) -> Result<&'l MoveTypeLayout, Error> {
+        self.inner.layout()
+    }
+
     /// Type layout for the vector's inner type.
     pub fn element_layout(&self) -> &'l MoveTypeLayout {
         self.layout
@@ -530,6 +676,13 @@ impl<'c, 'b, 'l> StructDriver<'c, 'b, 'l> {
     /// The bytes that haven't been consumed by the visitor yet.
     pub fn remaining_bytes(&self) -> &'b [u8] {
         self.inner.remaining_bytes()
+    }
+
+    /// Type layout for the value being visited. May produce an error if a layout was not supplied
+    /// when the driver was created (which should only happen if the driver was created for
+    /// visiting a struct specifically).
+    pub fn layout(&self) -> Result<&'l MoveTypeLayout, Error> {
+        self.inner.layout()
     }
 
     /// The layout of the struct being visited.
@@ -612,6 +765,13 @@ impl<'c, 'b, 'l> VariantDriver<'c, 'b, 'l> {
     /// The bytes that haven't been consumed by the visitor yet.
     pub fn remaining_bytes(&self) -> &'b [u8] {
         self.inner.remaining_bytes()
+    }
+
+    /// Type layout for the value being visited. May produce an error if a layout was not supplied
+    /// when the driver was created (which should only happen if the driver was created for
+    /// visiting a struct specifically).
+    pub fn layout(&self) -> Result<&'l MoveTypeLayout, Error> {
+        self.inner.layout()
     }
 
     /// The layout of the enum being visited.

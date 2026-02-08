@@ -19,7 +19,6 @@ use move_core_types::runtime_value::{MoveStruct, MoveValue};
 use move_core_types::u256::U256;
 use move_symbol_pool::Symbol;
 use move_transactional_test_runner::tasks::{RunCommand, SyntaxChoice};
-use mys_graphql_rpc::test_infra::cluster::SnapshotLagConfig;
 use mys_types::base_types::{MysAddress, SequenceNumber};
 use mys_types::move_package::UpgradePolicy;
 use mys_types::object::{Object, Owner};
@@ -27,6 +26,7 @@ use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use mys_types::transaction::{Argument, CallArg, ObjectArg};
 
 pub const MYS_ARGS_LONG: &str = "mys-args";
+const DEFAULT_CONSISTENT_RANGE: usize = 300;
 
 #[derive(Clone, Debug, clap::Parser)]
 pub struct MysRunArgs {
@@ -68,14 +68,10 @@ pub struct MysInitArgs {
     pub reference_gas_price: Option<u64>,
     #[clap(long = "default-gas-price")]
     pub default_gas_price: Option<u64>,
-    #[clap(flatten)]
-    pub snapshot_config: SnapshotLagConfig,
     #[clap(long = "flavor")]
     pub flavor: Option<Flavor>,
-    /// The number of epochs to keep in the database. Epochs outside of this range will be pruned by
-    /// the indexer.
-    #[clap(long = "epochs-to-keep")]
-    pub epochs_to_keep: Option<u64>,
+    #[clap(long = "consistent-range", default_value_t = DEFAULT_CONSISTENT_RANGE)]
+    pub consistent_range: usize,
     /// Dir for simulacrum to write checkpoint files to. To be passed to the offchain indexer and
     /// reader.
     #[clap(long)]
@@ -492,7 +488,7 @@ impl MysValue {
             Ok(ObjectArg::SharedObject {
                 id,
                 initial_shared_version,
-                mutable: false,
+                mutability: mys_types::transaction::SharedObjectMutability::Immutable,
             })
         } else {
             bail!("{fake_id} is not a shared object.")
@@ -510,13 +506,13 @@ impl MysValue {
             Owner::Shared {
                 initial_shared_version,
             }
-            | Owner::ConsensusV2 {
+            | Owner::ConsensusAddressOwner {
                 start_version: initial_shared_version,
                 ..
             } => Ok(ObjectArg::SharedObject {
                 id,
                 initial_shared_version,
-                mutable: true,
+                mutability: mys_types::transaction::SharedObjectMutability::Mutable,
             }),
             Owner::AddressOwner(_) | Owner::ObjectOwner(_) | Owner::Immutable => {
                 let obj_ref = obj.compute_object_reference();

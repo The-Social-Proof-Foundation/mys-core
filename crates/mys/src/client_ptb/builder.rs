@@ -131,7 +131,7 @@ impl<'a> Resolver<'a> for ToObject {
             Owner::Shared {
                 initial_shared_version,
             }
-            | Owner::ConsensusV2 {
+            | Owner::ConsensusAddressOwner {
                 start_version: initial_shared_version,
                 ..
             } => ObjectArg::SharedObject {

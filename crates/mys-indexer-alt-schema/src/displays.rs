@@ -7,7 +7,7 @@ use mys_field_count::FieldCount;
 
 use crate::schema::sum_displays;
 
-#[derive(Insertable, Debug, Clone, FieldCount)]
+#[derive(Insertable, Debug, Clone, FieldCount, Queryable)]
 #[diesel(table_name = sum_displays, primary_key(object_type))]
 pub struct StoredDisplay {
     pub object_type: Vec<u8>,

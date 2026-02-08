@@ -4,23 +4,37 @@
 
 use std::path::Path;
 
-use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
+use anyhow::bail;
 use clap::Parser;
+use prometheus::Registry;
 use mys_indexer_alt::args::Args;
 use mys_indexer_alt::args::Command;
 use mys_indexer_alt::config::IndexerConfig;
 use mys_indexer_alt::config::Merge;
-use mys_indexer_alt::start_indexer;
-use mys_indexer_alt_framework::Indexer;
+use mys_indexer_alt::setup_indexer;
+use mys_indexer_alt_framework::postgres::reset_database;
+use mys_indexer_alt_framework::service::Error;
+use mys_indexer_alt_framework::service::terminate;
 use mys_indexer_alt_metrics::MetricsService;
+use mys_indexer_alt_metrics::uptime;
 use mys_indexer_alt_schema::MIGRATIONS;
-use mys_pg_db::reset_database;
-use prometheus::Registry;
 use tokio::fs;
-use tokio_util::sync::CancellationToken;
 use tracing::info;
+
+// Define the `GIT_REVISION` const
+bin_version::git_revision!();
+
+static VERSION: &str = const_str::concat!(
+    env!("CARGO_PKG_VERSION_MAJOR"),
+    ".",
+    env!("CARGO_PKG_VERSION_MINOR"),
+    ".",
+    env!("CARGO_PKG_VERSION_PATCH"),
+    "-",
+    GIT_REVISION
+);
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -33,39 +47,64 @@ async fn main() -> Result<()> {
 
     match args.command {
         Command::Indexer {
+            database_url,
+            db_args,
             client_args,
             indexer_args,
             metrics_args,
             config,
         } => {
-            let indexer_config = read_config(&config).await?;
-            info!("Starting indexer with config: {:?}", indexer_config);
+            let is_bounded = indexer_args.last_checkpoint.is_some();
 
-            let cancel = CancellationToken::new();
+            let indexer_config = read_config(&config).await?;
+            info!("Starting indexer with config: {:#?}", indexer_config);
 
             let registry = Registry::new_custom(Some("indexer_alt".into()), None)
                 .context("Failed to create Prometheus registry.")?;
 
-            let metrics = MetricsService::new(metrics_args, registry, cancel.child_token());
+            let metrics = MetricsService::new(metrics_args, registry);
 
-            let h_indexer = start_indexer(
-                args.db_args,
-                indexer_args,
-                client_args,
-                indexer_config,
-                true,
-                metrics.registry(),
-                cancel.child_token(),
-            )
-            .await?;
+            metrics
+                .registry()
+                .register(uptime(VERSION)?)
+                .context("Failed to register uptime metric.")?;
 
-            let h_metrics = metrics.run().await?;
+            let indexer = tokio::select! {
+                _ = terminate() => {
+                    info!("Indexer terminated during setup");
+                    return Ok(());
+                }
 
-            // Wait for the indexer to finish, then force the supporting services to shut down
-            // using the cancellation token.
-            let _ = h_indexer.await;
-            cancel.cancel();
-            let _ = h_metrics.await;
+                indexer = setup_indexer(
+                    database_url,
+                    db_args,
+                    indexer_args,
+                    client_args,
+                    indexer_config,
+                    None,
+                    metrics.registry(),
+                ) => {
+                    indexer?
+                }
+            };
+
+            let s_indexer = indexer.run().await?;
+            let s_metrics = metrics.run().await?;
+
+            match s_indexer.attach(s_metrics).main().await {
+                Ok(()) => {}
+                Err(Error::Terminated) => {
+                    if is_bounded {
+                        std::process::exit(1);
+                    }
+                }
+                Err(Error::Aborted) => {
+                    std::process::exit(1);
+                }
+                Err(Error::Task(_)) => {
+                    std::process::exit(2);
+                }
+            }
         }
 
         Command::GenerateConfig => {
@@ -88,7 +127,7 @@ async fn main() -> Result<()> {
                 indexer_config =
                     indexer_config.merge(read_config(&file).await.with_context(|| {
                         format!("Failed to read configuration file: {}", file.display())
-                    })?);
+                    })?)?;
             }
 
             let config_toml = toml::to_string_pretty(&indexer_config)
@@ -97,22 +136,38 @@ async fn main() -> Result<()> {
             println!("{config_toml}");
         }
 
-        Command::ResetDatabase { skip_migrations } => {
+        Command::ResetDatabase {
+            database_url,
+            db_args,
+            skip_migrations,
+        } => {
             reset_database(
-                args.db_args,
-                (!skip_migrations).then(|| Indexer::migrations(Some(&MIGRATIONS))),
+                database_url,
+                db_args,
+                if !skip_migrations {
+                    Some(&MIGRATIONS)
+                } else {
+                    None
+                },
             )
             .await?;
         }
 
         #[cfg(feature = "benchmark")]
         Command::Benchmark {
+            database_url,
+            db_args,
             benchmark_args,
             config,
         } => {
             let indexer_config = read_config(&config).await?;
-            mys_indexer_alt::benchmark::run_benchmark(args.db_args, benchmark_args, indexer_config)
-                .await?;
+            mys_indexer_alt::benchmark::run_benchmark(
+                database_url,
+                db_args,
+                benchmark_args,
+                indexer_config,
+            )
+            .await?;
         }
     }
 

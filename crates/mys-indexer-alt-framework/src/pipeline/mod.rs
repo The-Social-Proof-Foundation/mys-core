@@ -5,9 +5,11 @@
 use std::time::Duration;
 
 pub use processor::Processor;
-use serde::{Deserialize, Serialize};
+use rand::Rng;
+use serde::Deserialize;
+use serde::Serialize;
 
-use crate::models::watermarks::CommitterWatermark;
+use crate::store::CommitterWatermark;
 
 pub mod concurrent;
 mod logging;
@@ -22,9 +24,6 @@ const PIPELINE_BUFFER: usize = 5;
 /// happen if the pipeline was started with its initial checkpoint overridden to be strictly
 /// greater than its current watermark -- in that case, the pipeline will never be able to update
 /// its watermarks.
-///
-/// This may be a legitimate thing to do when backfilling a table, but in that case
-/// `--skip-watermarks` should be used.
 const WARN_PENDING_WATERMARKS: usize = 10000;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -37,6 +36,9 @@ pub struct CommitterConfig {
 
     /// Watermark task will check for pending watermarks this often, in milliseconds.
     pub watermark_interval_ms: u64,
+
+    /// Maximum random jitter to add to the watermark interval, in milliseconds.
+    pub watermark_interval_jitter_ms: u64,
 }
 
 /// Processed values associated with a single checkpoint. This is an internal type used to
@@ -45,29 +47,18 @@ struct IndexedCheckpoint<P: Processor> {
     /// Values to be inserted into the database from this checkpoint
     values: Vec<P::Value>,
     /// The watermark associated with this checkpoint
-    watermark: CommitterWatermark<'static>,
+    watermark: CommitterWatermark,
 }
 
 /// A representation of the proportion of a watermark.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct WatermarkPart {
     /// The watermark itself
-    watermark: CommitterWatermark<'static>,
+    watermark: CommitterWatermark,
     /// The number of rows from this watermark that are in this part
     batch_rows: usize,
     /// The total number of rows from this watermark
     total_rows: usize,
-}
-
-/// Internal type used by workers to propagate errors or shutdown signals up to their
-/// supervisor.
-#[derive(thiserror::Error, Debug)]
-enum Break {
-    #[error("Shutdown received")]
-    Cancel,
-
-    #[error(transparent)]
-    Err(#[from] anyhow::Error),
 }
 
 impl CommitterConfig {
@@ -77,6 +68,17 @@ impl CommitterConfig {
 
     pub fn watermark_interval(&self) -> Duration {
         Duration::from_millis(self.watermark_interval_ms)
+    }
+
+    /// Returns the next watermark update instant with a random jitter added. The jitter is a
+    /// random value between 0 and `watermark_interval_jitter_ms`.
+    pub fn watermark_interval_with_jitter(&self) -> tokio::time::Instant {
+        let jitter = if self.watermark_interval_jitter_ms == 0 {
+            0
+        } else {
+            rand::thread_rng().gen_range(0..=self.watermark_interval_jitter_ms)
+        };
+        tokio::time::Instant::now() + Duration::from_millis(self.watermark_interval_ms + jitter)
     }
 }
 
@@ -90,11 +92,10 @@ impl<P: Processor> IndexedCheckpoint<P> {
     ) -> Self {
         Self {
             watermark: CommitterWatermark {
-                pipeline: P::NAME.into(),
-                epoch_hi_inclusive: epoch as i64,
-                checkpoint_hi_inclusive: cp_sequence_number as i64,
-                tx_hi: tx_hi as i64,
-                timestamp_ms_hi_inclusive: timestamp_ms as i64,
+                epoch_hi_inclusive: epoch,
+                checkpoint_hi_inclusive: cp_sequence_number,
+                tx_hi,
+                timestamp_ms_hi_inclusive: timestamp_ms,
             },
             values,
         }
@@ -107,17 +108,17 @@ impl<P: Processor> IndexedCheckpoint<P> {
 
     /// The checkpoint sequence number that this data is from
     fn checkpoint(&self) -> u64 {
-        self.watermark.checkpoint_hi_inclusive as u64
+        self.watermark.checkpoint_hi_inclusive
     }
 }
 
 impl WatermarkPart {
     fn checkpoint(&self) -> u64 {
-        self.watermark.checkpoint_hi_inclusive as u64
+        self.watermark.checkpoint_hi_inclusive
     }
 
     fn timestamp_ms(&self) -> u64 {
-        self.watermark.timestamp_ms_hi_inclusive as u64
+        self.watermark.timestamp_ms_hi_inclusive
     }
 
     /// Check if all the rows from this watermark are represented in this part.
@@ -140,7 +141,7 @@ impl WatermarkPart {
 
         self.batch_rows -= rows;
         WatermarkPart {
-            watermark: self.watermark.clone(),
+            watermark: self.watermark,
             batch_rows: rows,
             total_rows: self.total_rows,
         }
@@ -153,6 +154,145 @@ impl Default for CommitterConfig {
             write_concurrency: 5,
             collect_interval_ms: 500,
             watermark_interval_ms: 500,
+            watermark_interval_jitter_ms: 0,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_trait::async_trait;
+    use std::sync::Arc;
+    use mys_types::full_checkpoint_content::Checkpoint;
+
+    // Test implementation of Processor
+    struct TestProcessor;
+    #[async_trait]
+    impl Processor for TestProcessor {
+        const NAME: &'static str = "test";
+        type Value = i32;
+
+        async fn process(&self, _checkpoint: &Arc<Checkpoint>) -> anyhow::Result<Vec<Self::Value>> {
+            Ok(vec![1, 2, 3])
+        }
+    }
+
+    #[test]
+    fn test_watermark_part_getters() {
+        let watermark = CommitterWatermark {
+            epoch_hi_inclusive: 1,
+            checkpoint_hi_inclusive: 100,
+            tx_hi: 1000,
+            timestamp_ms_hi_inclusive: 1234567890,
+        };
+
+        let part = WatermarkPart {
+            watermark,
+            batch_rows: 50,
+            total_rows: 200,
+        };
+
+        assert_eq!(part.checkpoint(), 100);
+        assert_eq!(part.timestamp_ms(), 1234567890);
+    }
+
+    #[test]
+    fn test_watermark_part_is_complete() {
+        let part = WatermarkPart {
+            watermark: CommitterWatermark::default(),
+            batch_rows: 200,
+            total_rows: 200,
+        };
+
+        assert!(part.is_complete());
+    }
+
+    #[test]
+    fn test_watermark_part_is_not_complete() {
+        let part = WatermarkPart {
+            watermark: CommitterWatermark::default(),
+            batch_rows: 199,
+            total_rows: 200,
+        };
+
+        assert!(!part.is_complete());
+    }
+
+    #[test]
+    fn test_watermark_part_becomes_complete_after_adding_new_batch() {
+        let mut part = WatermarkPart {
+            watermark: CommitterWatermark::default(),
+            batch_rows: 199,
+            total_rows: 200,
+        };
+
+        // Add a batch that makes it complete
+        part.add(WatermarkPart {
+            watermark: CommitterWatermark::default(),
+            batch_rows: 1,
+            total_rows: 200,
+        });
+
+        assert!(part.is_complete());
+        assert_eq!(part.batch_rows, 200);
+    }
+
+    #[test]
+    fn test_watermark_part_becomes_incomplete_after_taking_away_batch() {
+        let mut part = WatermarkPart {
+            watermark: CommitterWatermark::default(),
+            batch_rows: 200,
+            total_rows: 200,
+        };
+        assert!(part.is_complete(), "Initial part should be complete");
+
+        // Take away a portion of the batch
+        let extracted_part = part.take(10);
+
+        // Verify state of extracted part
+        assert!(!extracted_part.is_complete());
+        assert_eq!(extracted_part.batch_rows, 10);
+        assert_eq!(extracted_part.total_rows, 200);
+    }
+
+    #[test]
+    fn test_indexed_checkpoint() {
+        let epoch = 1;
+        let cp_sequence_number = 100;
+        let tx_hi = 1000;
+        let timestamp_ms = 1234567890;
+        let values = vec![1, 2, 3];
+
+        let checkpoint = IndexedCheckpoint::<TestProcessor>::new(
+            epoch,
+            cp_sequence_number,
+            tx_hi,
+            timestamp_ms,
+            values,
+        );
+
+        assert_eq!(checkpoint.len(), 3);
+        assert_eq!(checkpoint.checkpoint(), 100);
+    }
+
+    #[test]
+    fn test_indexed_checkpoint_with_empty_values() {
+        let epoch = 1;
+        let cp_sequence_number = 100;
+        let tx_hi = 1000;
+        let timestamp_ms = 1234567890;
+        let values: Vec<<TestProcessor as Processor>::Value> = vec![];
+
+        let checkpoint = IndexedCheckpoint::<TestProcessor>::new(
+            epoch,
+            cp_sequence_number,
+            tx_hi,
+            timestamp_ms,
+            values,
+        );
+
+        assert_eq!(checkpoint.len(), 0);
+        assert_eq!(checkpoint.checkpoint(), 100);
     }
 }

@@ -2,7 +2,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use mys_types::{base_types::ObjectID, digests::TransactionDigest};
+use mys_types::base_types::ObjectID;
+use mys_types::digests::TransactionDigest;
 
 #[derive(thiserror::Error, Debug)]
 pub(super) enum Error {
@@ -15,15 +16,12 @@ pub(super) enum Error {
     #[error("Pagination issue: {0}")]
     Pagination(#[from] crate::paginate::Error),
 
-    #[error("Balance changes for transaction {0} have been pruned")]
-    PrunedBalanceChanges(TransactionDigest),
+    #[error("Balance changes for transaction {0} are either pruned or not yet available")]
+    BalanceChangesNotFound(TransactionDigest),
 
     #[error(
         "Transaction {0} affected object {} pruned at version {2}",
         .1.to_canonical_display(/* with_prefix */ true),
     )]
     PrunedObject(TransactionDigest, ObjectID, u64),
-
-    #[error("{0}")]
-    Unsupported(&'static str),
 }

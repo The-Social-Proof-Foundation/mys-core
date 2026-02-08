@@ -37,7 +37,6 @@ mysten-metrics.workspace = true
 mysten-service.workspace = true
 mys-analytics-indexer-derive.workspace = true
 mys-data-ingestion-core.workspace = true
-mys-indexer.workspace = true
 eyre.workspace = true
 tempfile.workspace = true
 mys-types.workspace = true

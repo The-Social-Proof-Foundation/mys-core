@@ -2,12 +2,16 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::accumulator_event::AccumulatorEvent;
 use crate::base_types::{
     random_object_ref, EpochId, MysAddress, ObjectID, ObjectRef, SequenceNumber, TransactionDigest,
 };
 use crate::digests::{ObjectDigest, TransactionEventsDigest};
-use crate::effects::{InputSharedObject, TransactionEffectsAPI, UnchangedSharedKind};
-use crate::execution_status::ExecutionStatus;
+use crate::effects::{
+    AccumulatorWriteV1, InputConsensusObject, InputSharedObject, TransactionEffectsAPI,
+    UnchangedConsensusKind, UnchangedSharedKind,
+};
+use crate::execution_status::{ExecutionFailureStatus, ExecutionStatus, MoveLocation};
 use crate::gas::GasCostSummary;
 use crate::object::Owner;
 use serde::{Deserialize, Serialize};
@@ -147,6 +151,18 @@ impl TransactionEffectsAPI for TransactionEffectsV1 {
             })
             .cloned()
             .collect()
+    }
+
+    fn move_abort(&self) -> Option<(MoveLocation, u64)> {
+        if let ExecutionStatus::Failure {
+            error: ExecutionFailureStatus::MoveAbort(location, code),
+            ..
+        } = &self.status
+        {
+            Some((location.clone(), *code))
+        } else {
+            None
+        }
     }
 
     fn lamport_version(&self) -> SequenceNumber {
@@ -296,6 +312,60 @@ impl TransactionEffectsAPI for TransactionEffectsV1 {
             .collect()
     }
 
+    fn input_consensus_objects(&self) -> Vec<InputConsensusObject> {
+        // Effects v1 does not support consensus objects - they were introduced in v2
+        vec![]
+    }
+
+    fn transferred_from_consensus(&self) -> Vec<ObjectRef> {
+        // Effects v1 does not support consensus transfers - they were introduced in v2
+        vec![]
+    }
+
+    fn transferred_to_consensus(&self) -> Vec<ObjectRef> {
+        // Effects v1 does not support consensus transfers - they were introduced in v2
+        vec![]
+    }
+
+    fn consensus_owner_changed(&self) -> Vec<ObjectRef> {
+        // Effects v1 does not support consensus owner changes - they were introduced in v2
+        vec![]
+    }
+
+    fn published_packages(&self) -> Vec<ObjectID> {
+        // Effects v1 does not track published packages separately
+        vec![]
+    }
+
+    fn accumulator_events(&self) -> Vec<AccumulatorEvent> {
+        // Effects v1 does not support accumulator events - they were introduced in v2
+        vec![]
+    }
+
+    fn accumulator_updates(&self) -> Vec<(ObjectID, AccumulatorWriteV1)> {
+        // Effects v1 does not support accumulator updates - they were introduced in v2
+        vec![]
+    }
+
+    fn unsafe_add_input_consensus_object_for_testing(&mut self, _kind: InputConsensusObject) {
+        panic!("Consensus objects are not supported in effects v1");
+    }
+
+    fn unchanged_consensus_objects(&self) -> Vec<(ObjectID, UnchangedConsensusKind)> {
+        // Effects v1 does not support consensus objects - they were introduced in v2
+        vec![]
+    }
+
+    fn written(&self) -> Vec<ObjectRef> {
+        // For V1, construct written objects from created, mutated, deleted, and wrapped
+        let mut written = Vec::new();
+        written.extend(self.created().into_iter().map(|(r, _)| r));
+        written.extend(self.mutated().into_iter().map(|(r, _)| r));
+        written.extend(self.deleted());
+        written.extend(self.wrapped());
+        written
+    }
+
     fn status_mut_for_testing(&mut self) -> &mut ExecutionStatus {
         &mut self.status
     }
@@ -312,25 +382,6 @@ impl TransactionEffectsAPI for TransactionEffectsV1 {
         &mut self.dependencies
     }
 
-    fn unsafe_add_input_shared_object_for_testing(&mut self, kind: InputSharedObject) {
-        match kind {
-            InputSharedObject::Mutate(obj_ref) => {
-                self.shared_objects.push(obj_ref);
-                self.modified_at_versions.push((obj_ref.0, obj_ref.1));
-            }
-            InputSharedObject::ReadOnly(obj_ref) => {
-                self.shared_objects.push(obj_ref);
-            }
-            InputSharedObject::ReadDeleted(id, version)
-            | InputSharedObject::MutateDeleted(id, version) => {
-                self.shared_objects
-                    .push((id, version, ObjectDigest::OBJECT_DIGEST_DELETED));
-            }
-            InputSharedObject::Cancelled(..) => {
-                panic!("Transaction cancellation is not supported in effect v1");
-            }
-        }
-    }
 
     fn unsafe_add_deleted_live_object_for_testing(&mut self, object: ObjectRef) {
         self.modified_at_versions.push((object.0, object.1));

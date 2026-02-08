@@ -8,9 +8,9 @@ CREATE TABLE IF NOT EXISTS coin_balance_buckets
 (
     object_id                   BYTEA         NOT NULL,
     cp_sequence_number          BIGINT        NOT NULL,
-    -- The kind of owner of this coin. We need this to support ConsensusV2 objects.
+    -- The kind of owner of this coin. We need this to support ConsensusAddressOwner objects.
     -- A coin can be either owned by an address through fast-path ownership, or
-    -- by an anddress through ConsensusV2 ownership.
+    -- by an address through ConsensusAddressOwner ownership.
     -- This is represented by `StoredCoinOwnerKind` in `models/objects.rs`, which is different
     -- from `StoredOwnerKind` used in `obj_info` table.
     owner_kind                  SMALLINT,

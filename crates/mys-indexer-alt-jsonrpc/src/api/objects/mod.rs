@@ -4,26 +4,27 @@
 
 use filter::MysObjectResponseQuery;
 use futures::future;
-use jsonrpsee::{core::RpcResult, proc_macros::rpc};
-use mys_json_rpc_types::{
-    MysGetPastObjectRequest, MysObjectDataOptions, MysObjectResponse, MysPastObjectResponse, Page,
-};
+use jsonrpsee::core::RpcResult;
+use jsonrpsee::proc_macros::rpc;
+use mys_json_rpc_types::Page;
+use mys_json_rpc_types::MysGetPastObjectRequest;
+use mys_json_rpc_types::MysObjectDataOptions;
+use mys_json_rpc_types::MysObjectResponse;
+use mys_json_rpc_types::MysPastObjectResponse;
 use mys_open_rpc::Module;
 use mys_open_rpc_macros::open_rpc;
-use mys_types::base_types::{MysAddress, ObjectID, SequenceNumber};
-use serde::{Deserialize, Serialize};
+use mys_types::base_types::ObjectID;
+use mys_types::base_types::SequenceNumber;
+use mys_types::base_types::MysAddress;
 
-use crate::{
-    context::Context,
-    error::{invalid_params, InternalContext},
-};
-
-use super::rpc_module::RpcModule;
-
-use self::error::Error;
+use crate::api::objects::error::Error;
+use crate::api::rpc_module::RpcModule;
+use crate::context::Context;
+use crate::error::InternalContext;
+use crate::error::invalid_params;
 
 mod error;
-mod filter;
+pub(crate) mod filter;
 pub(crate) mod response;
 
 #[open_rpc(namespace = "mys", tag = "Objects API")]
@@ -110,22 +111,9 @@ trait QueryObjectsApi {
     ) -> RpcResult<Page<MysObjectResponse, String>>;
 }
 
-pub(crate) struct Objects(pub Context, pub ObjectsConfig);
+pub(crate) struct Objects(pub Context);
 
-pub(crate) struct QueryObjects(pub Context, pub ObjectsConfig);
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ObjectsConfig {
-    /// The maximum number of keys that can be queried in a single multi-get request.
-    pub max_multi_get_objects: usize,
-
-    /// The default page size limit when querying objects, if none is provided.
-    pub default_page_size: usize,
-
-    /// The largest acceptable page size when querying transactions. Requesting a page larger than
-    /// this is a user error.
-    pub max_page_size: usize,
-}
+pub(crate) struct QueryObjects(pub Context);
 
 #[async_trait::async_trait]
 impl ObjectsApiServer for Objects {
@@ -134,7 +122,7 @@ impl ObjectsApiServer for Objects {
         object_id: ObjectID,
         options: Option<MysObjectDataOptions>,
     ) -> RpcResult<MysObjectResponse> {
-        let Self(ctx, _) = self;
+        let Self(ctx) = self;
         let options = options.unwrap_or_default();
         Ok(response::live_object(ctx, object_id, &options)
             .await
@@ -148,7 +136,8 @@ impl ObjectsApiServer for Objects {
         object_ids: Vec<ObjectID>,
         options: Option<MysObjectDataOptions>,
     ) -> RpcResult<Vec<MysObjectResponse>> {
-        let Self(ctx, config) = self;
+        let Self(ctx) = self;
+        let config = &ctx.config().objects;
         if object_ids.len() > config.max_multi_get_objects {
             return Err(invalid_params(Error::TooManyKeys {
                 requested: object_ids.len(),
@@ -179,7 +168,7 @@ impl ObjectsApiServer for Objects {
         version: SequenceNumber,
         options: Option<MysObjectDataOptions>,
     ) -> RpcResult<MysPastObjectResponse> {
-        let Self(ctx, _) = self;
+        let Self(ctx) = self;
         let options = options.unwrap_or_default();
         Ok(response::past_object(ctx, object_id, version, &options)
             .await
@@ -196,7 +185,8 @@ impl ObjectsApiServer for Objects {
         past_objects: Vec<MysGetPastObjectRequest>,
         options: Option<MysObjectDataOptions>,
     ) -> RpcResult<Vec<MysPastObjectResponse>> {
-        let Self(ctx, config) = self;
+        let Self(ctx) = self;
+        let config = &ctx.config().objects;
         if past_objects.len() > config.max_multi_get_objects {
             return Err(invalid_params(Error::TooManyKeys {
                 requested: past_objects.len(),
@@ -233,7 +223,7 @@ impl QueryObjectsApiServer for QueryObjects {
         cursor: Option<String>,
         limit: Option<usize>,
     ) -> RpcResult<Page<MysObjectResponse, String>> {
-        let Self(ctx, confige) = self;
+        let Self(ctx) = self;
 
         let query = query.unwrap_or_default();
 
@@ -241,13 +231,13 @@ impl QueryObjectsApiServer for QueryObjects {
             data: object_ids,
             next_cursor,
             has_next_page,
-        } = filter::owned_objects(ctx, confige, address, &query.filter, cursor, limit).await?;
+        } = filter::owned_objects(ctx, address, &query.filter, cursor, limit).await?;
 
         let options = query.options.unwrap_or_default();
 
         let obj_futures = object_ids
             .iter()
-            .map(|id| response::latest_object(ctx, *id, &options));
+            .map(|id| response::live_object(ctx, *id, &options));
 
         let data = future::join_all(obj_futures)
             .await
@@ -283,15 +273,5 @@ impl RpcModule for QueryObjects {
 
     fn into_impl(self) -> jsonrpsee::RpcModule<Self> {
         self.into_rpc()
-    }
-}
-
-impl Default for ObjectsConfig {
-    fn default() -> Self {
-        Self {
-            max_multi_get_objects: 50,
-            default_page_size: 50,
-            max_page_size: 100,
-        }
     }
 }

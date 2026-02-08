@@ -4,7 +4,7 @@ version.workspace = true
 authors = ["Mysten Labs <build@mystenlabs.com>"]
 license = "Apache-2.0"
 publish = false
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 anyhow.workspace = true
@@ -12,7 +12,9 @@ diesel = {workspace = true, features = ["postgres_backend", "chrono"]}
 diesel_migrations.workspace = true
 serde.workspace = true
 bcs.workspace = true
+siphasher = "1.0"
 
+move-core-types.workspace = true
 mys-field-count.workspace = true
 mys-protocol-config.workspace = true
 mys-types.workspace = true

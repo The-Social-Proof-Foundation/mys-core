@@ -44,7 +44,6 @@ move-core-types.workspace = true
 
 mys-core.workspace = true
 mys-framework.workspace = true
-mys-json-rpc.workspace = true
 mys-json-rpc-api.workspace = true
 mys-node.workspace = true
 mys-macros.workspace = true

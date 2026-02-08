@@ -5,14 +5,14 @@
 use fastcrypto::traits::KeyPair;
 
 use crate::{
-    base_types::{dbg_addr, ObjectID},
+    base_types::{ObjectID, dbg_addr},
     committee::EpochId,
     crypto::{
-        AccountKeyPair, AuthorityKeyPair, AuthoritySignature, MysAuthoritySignature, MysSignature,
-        Signature, SignatureScheme,
+        AccountKeyPair, AuthorityKeyPair, AuthoritySignature, Signature, SignatureScheme,
+        MysAuthoritySignature, MysSignature,
     },
     object::Object,
-    transaction::{Transaction, TransactionData, TEST_ONLY_GAS_UNIT_FOR_TRANSFER},
+    transaction::{TEST_ONLY_GAS_UNIT_FOR_TRANSFER, Transaction, TransactionData},
 };
 
 use crate::crypto::get_key_pair;
@@ -83,9 +83,10 @@ fn test_authority_signature_intent() {
     );
     let tx = Transaction::from_data(data, vec![signature]);
     let tx1 = tx.clone();
-    assert!(tx
-        .try_into_verified_for_testing(epoch, &Default::default())
-        .is_ok());
+    assert!(
+        tx.try_into_verified_for_testing(epoch, &Default::default())
+            .is_ok()
+    );
 
     // Create an intent with signed data.
     let intent_bcs = bcs::to_bytes(tx1.intent_message()).unwrap();

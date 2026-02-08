@@ -32,6 +32,7 @@ use std::{io::Read, sync::Arc};
 use log::info;
 use object_store::parse_url;
 use object_store::path::Path;
+use object_store::ObjectStoreExt;
 use serde_json::json;
 use serde_json::Value;
 use url::Url;
@@ -242,7 +243,7 @@ async fn download_checkpoint_summary(
     let (dyn_store, _store_path) = parse_url(&url).unwrap();
     let path = Path::from(format!("{}.chk", checkpoint_number));
     let response = dyn_store.get(&path).await?;
-    let bytes = response.bytes().await?;
+    let bytes = response.bytes().await?.to_vec();
     let (_, blob) = bcs::from_bytes::<(u8, CheckpointData)>(&bytes)?;
 
     info!("Downloaded checkpoint summary: {}", checkpoint_number);
@@ -378,7 +379,7 @@ async fn get_full_checkpoint(
         .get(&path)
         .await
         .map_err(|_| anyhow!("Cannot get full checkpoint from object store"))?;
-    let bytes = response.bytes().await?;
+    let bytes = response.bytes().await?.to_vec();
     let (_, full_checkpoint) = bcs::from_bytes::<(u8, CheckpointData)>(&bytes)?;
     Ok(full_checkpoint)
 }

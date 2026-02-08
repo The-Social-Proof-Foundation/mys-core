@@ -938,7 +938,10 @@ impl AuthorityPerEpochStore {
             zklogin_env,
             protocol_config.verify_legacy_zklogin_address(),
             protocol_config.accept_zklogin_in_multisig(),
+            false, // accept_passkey_in_multisig - not available in mys-protocol-config
             protocol_config.zklogin_max_epoch_upper_bound_delta(),
+            false, // additional_multisig_checks - not available in mys-protocol-config
+            false, // validate_zklogin_public_identifier - not available in mys-protocol-config
         );
 
         let authenticator_state_exists = epoch_start_configuration
@@ -1472,7 +1475,7 @@ impl AuthorityPerEpochStore {
                             if self.epoch_start_config().use_version_assignment_tables_v3() {
                                 *initial_shared_version
                             } else {
-                                // (before ConsensusV2 objects, we didn't track initial shared
+                                // (before ConsensusAddressOwner objects, we didn't track initial shared
                                 // version for shared object version assignments)
                                 SequenceNumber::UNKNOWN
                             };

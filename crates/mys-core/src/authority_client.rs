@@ -110,6 +110,9 @@ impl NetworkAuthorityClient {
                 None,
             )
         });
+        let tls_config = tls_config.ok_or_else(|| {
+            anyhow::anyhow!("TLS configuration required: tls_target must be provided")
+        })?;
         let channel = mysten_network::client::connect(address, tls_config)
             .await
             .map_err(|err| anyhow!(err.to_string()))?;
@@ -117,13 +120,19 @@ impl NetworkAuthorityClient {
     }
 
     pub fn connect_lazy(address: &Multiaddr, tls_target: Option<NetworkPublicKey>) -> Self {
-        let tls_config = tls_target.map(|tls_target| {
-            mys_tls::create_rustls_client_config(
+        let tls_config = match tls_target {
+            Some(tls_target) => mys_tls::create_rustls_client_config(
                 tls_target,
                 mys_tls::MYS_VALIDATOR_SERVER_NAME.to_string(),
                 None,
-            )
-        });
+            ),
+            None => {
+                // Return a client with an error state - TLS is required
+                return Self {
+                    client: Err(anyhow::anyhow!("TLS configuration required: tls_target must be provided").to_string().into()),
+                };
+            }
+        };
         let client: MysResult<_> = mysten_network::client::connect_lazy(address, tls_config)
             .map(ValidatorClient::new)
             .map_err(|err| err.to_string().into());
@@ -292,8 +301,23 @@ pub fn make_network_authority_clients_with_network_config(
         //         None,
         //     )
         // });
-        // TODO: Change below code to generate a MysError if no valid TLS config is available.
-        let maybe_channel = network_config.connect_lazy(&address, None).map_err(|e| {
+        // Use the network public key from committee metadata for TLS
+        let tls_config = match network_metadata.network_public_key.as_ref() {
+            Some(key) => mys_tls::create_rustls_client_config(
+                key.clone(),
+                mys_tls::MYS_VALIDATOR_SERVER_NAME.to_string(),
+                None,
+            ),
+            None => {
+                tracing::warn!(
+                    address = %address,
+                    name = %name,
+                    "Skipping validator: network public key not available for TLS"
+                );
+                continue;
+            }
+        };
+        let maybe_channel = network_config.connect_lazy(&address, tls_config).map_err(|e| {
             tracing::error!(
                 address = %address,
                 name = %name,

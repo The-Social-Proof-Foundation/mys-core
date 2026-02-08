@@ -28,12 +28,16 @@ use crate::{base_types::RESOLVED_STD_OPTION, id::RESOLVED_MYS_ID};
 pub mod error;
 
 pub mod accumulator;
+pub mod accumulator_event;
+pub mod accumulator_root;
 pub mod authenticator_state;
 pub mod balance;
+pub mod balance_change;
 pub mod base_types;
 pub mod bridge;
 pub mod clock;
 pub mod coin;
+pub mod coin_registry;
 pub mod collection_types;
 pub mod committee;
 pub mod config;
@@ -49,8 +53,10 @@ pub mod event;
 pub mod executable_transaction;
 pub mod execution;
 pub mod execution_config_utils;
+pub mod execution_params;
 pub mod execution_status;
 pub mod full_checkpoint_content;
+pub mod funds_accumulator;
 pub mod gas;
 pub mod gas_coin;
 pub mod gas_model;
@@ -76,8 +82,10 @@ pub mod nitro_attestation;
 pub mod object;
 pub mod passkey_authenticator;
 pub mod programmable_transaction_builder;
+pub mod proto_value;
 pub mod quorum_driver_types;
 pub mod randomness_state;
+pub mod rpc_proto_conversions;
 pub mod signature;
 pub mod signature_verification;
 pub mod storage;
@@ -85,6 +93,7 @@ pub mod supported_protocol_versions;
 pub mod test_checkpoint_data_builder;
 pub mod traffic_control;
 pub mod transaction;
+pub mod transaction_driver_types;
 pub mod transaction_executor;
 pub mod transfer;
 pub mod type_input;
@@ -131,6 +140,7 @@ built_in_ids! {
     MYS_RANDOMNESS_STATE_ADDRESS / MYS_RANDOMNESS_STATE_OBJECT_ID = 0x8;
     MYS_BRIDGE_ADDRESS / MYS_BRIDGE_OBJECT_ID = 0x9;
     MYS_DENY_LIST_ADDRESS / MYS_DENY_LIST_OBJECT_ID = 0x403;
+    MYS_ACCUMULATOR_ROOT_ADDRESS / MYS_ACCUMULATOR_ROOT_OBJECT_ID = 0xacc;
 }
 
 pub const MYS_SYSTEM_STATE_OBJECT_SHARED_VERSION: SequenceNumber = OBJECT_START_VERSION;
@@ -235,6 +245,10 @@ impl<T: MoveTypeTagTrait> MoveTypeTagTrait for Vec<T> {
     fn get_type_tag() -> TypeTag {
         TypeTag::Vector(Box::new(T::get_type_tag()))
     }
+}
+
+pub trait MoveTypeTagTraitGeneric {
+    fn get_type_tag(type_params: &[TypeTag]) -> TypeTag;
 }
 
 pub fn is_primitive(

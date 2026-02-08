@@ -59,6 +59,8 @@ mysten-metrics.workspace = true
 parking_lot.workspace = true
 mys-macros.workspace = true
 mys-enum-compat-util.workspace = true
+mys-rpc.workspace = true
+prost-types.workspace = true
 
 fastcrypto = { workspace = true, features = ["copy_key"] }
 fastcrypto-tbls.workspace = true
@@ -73,6 +75,8 @@ better_any.workspace = true
 lru.workspace = true
 
 mys-sdk-types.workspace = true
+
+base64.workspace = true
 
 ciborium.workspace = true
 x509-parser.workspace = true

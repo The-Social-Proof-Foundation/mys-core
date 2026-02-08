@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-//# init --protocol-version 70 --accounts A B C --simulator
+//# init --protocol-version 108 --accounts A B C --simulator
 
 // Transactions:
 //
@@ -15,9 +15,10 @@
 // RPC queries:
 //
 // 1. All Transactions
-// 2, 3,  4. Transactions affecting A, B, C respectively.
-// 5, 6,  7. Transactions sent by A, B, C respectively.
-// 8. Transactions sent by A to B.
+// 2, 3, 4, 5, 6, 7. Transactions affecting and to A, B, C respectively (they
+//     mean the same thing in this RPC implementation).
+// 8, 9, 10. Transactions sent by A, B, C respectively.
+// 11. Transactions sent by A to B.
 
 //# programmable --sender A --inputs 42 @A
 //> 0: SplitCoins(Gas, [Input(0)]);
@@ -60,6 +61,14 @@
 {
   "method": "mysx_queryTransactionBlocks",
   "params": [
+    { "filter": { "ToAddress": "@{A}" } }
+  ]
+}
+
+//# run-jsonrpc
+{
+  "method": "mysx_queryTransactionBlocks",
+  "params": [
     { "filter": { "FromOrToAddress": { "addr": "@{B}" } } }
   ]
 }
@@ -68,7 +77,23 @@
 {
   "method": "mysx_queryTransactionBlocks",
   "params": [
+    { "filter": { "ToAddress": "@{B}"  } }
+  ]
+}
+
+//# run-jsonrpc
+{
+  "method": "mysx_queryTransactionBlocks",
+  "params": [
     { "filter": { "FromOrToAddress": { "addr": "@{C}" } } }
+  ]
+}
+
+//# run-jsonrpc
+{
+  "method": "mysx_queryTransactionBlocks",
+  "params": [
+    { "filter": { "ToAddress": "@{C}" } }
   ]
 }
 

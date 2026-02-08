@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-//# init --protocol-version 70 --accounts A --simulator
+//# init --protocol-version 108 --accounts A --simulator
 
 // 1. Output all the checkpoints, for context
 // 2. Fetch transactions from an empty checkpoint
@@ -173,7 +173,7 @@
   ]
 }
 
-//# run-jsonrpc --cursors 3
+//# run-jsonrpc --cursors 6
 {
   "method": "mysx_queryTransactionBlocks",
   "params": [
@@ -182,7 +182,7 @@
   ]
 }
 
-//# run-jsonrpc --cursors 3
+//# run-jsonrpc --cursors 6
 {
   "method": "mysx_queryTransactionBlocks",
   "params": [
@@ -200,7 +200,7 @@
   ]
 }
 
-//# run-jsonrpc --cursors 6
+//# run-jsonrpc --cursors 9
 {
   "method": "mysx_queryTransactionBlocks",
   "params": [
@@ -218,7 +218,7 @@
   ]
 }
 
-//# run-jsonrpc --cursors 6
+//# run-jsonrpc --cursors 9
 {
   "method": "mysx_queryTransactionBlocks",
   "params": [

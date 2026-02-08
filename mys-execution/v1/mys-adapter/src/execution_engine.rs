@@ -49,7 +49,7 @@ mod checked {
     use mys_types::transaction::{
         Argument, AuthenticatorStateExpire, AuthenticatorStateUpdate, CallArg, ChangeEpoch,
         Command, EndOfEpochTransactionKind, GenesisTransaction, ObjectArg, ProgrammableTransaction,
-        TransactionKind,
+        SharedObjectMutability, TransactionKind,
     };
     use mys_types::{
         base_types::{MysAddress, ObjectID, ObjectRef, TransactionDigest, TxContext},
@@ -1004,7 +1004,7 @@ mod checked {
                     CallArg::Object(ObjectArg::SharedObject {
                         id: MYS_AUTHENTICATOR_STATE_OBJECT_ID,
                         initial_shared_version: update.authenticator_obj_initial_shared_version,
-                        mutable: true,
+                        mutability: SharedObjectMutability::Mutable,
                     }),
                     CallArg::Pure(bcs::to_bytes(&update.new_active_jwks).unwrap()),
                 ],
@@ -1040,7 +1040,7 @@ mod checked {
                     CallArg::Object(ObjectArg::SharedObject {
                         id: MYS_AUTHENTICATOR_STATE_OBJECT_ID,
                         initial_shared_version: expire.authenticator_obj_initial_shared_version,
-                        mutable: true,
+                        mutability: SharedObjectMutability::Mutable,
                     }),
                     CallArg::Pure(bcs::to_bytes(&expire.min_epoch).unwrap()),
                 ],

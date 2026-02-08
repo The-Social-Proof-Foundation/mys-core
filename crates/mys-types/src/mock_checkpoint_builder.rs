@@ -10,7 +10,7 @@ use crate::gas::GasCostSummary;
 use crate::messages_checkpoint::{
     CertifiedCheckpointSummary, CheckpointContents, CheckpointSummary,
     CheckpointVersionSpecificData, EndOfEpochData, FullCheckpointContents, VerifiedCheckpoint,
-    VerifiedCheckpointContents,
+    VerifiedCheckpointContents, VersionedFullCheckpointContents,
 };
 use crate::transaction::VerifiedTransaction;
 use fastcrypto::traits::Signer;
@@ -125,10 +125,12 @@ impl MockCheckpointBuilder {
         let contents =
             CheckpointContents::new_with_causally_ordered_execution_data(self.transactions.iter());
         let full_contents = VerifiedCheckpointContents::new_unchecked(
-            FullCheckpointContents::new_with_causally_ordered_transactions(
-                mem::take(&mut self.transactions)
-                    .into_iter()
-                    .map(|e| e.into_inner()),
+            VersionedFullCheckpointContents::V1(
+                FullCheckpointContents::new_with_causally_ordered_transactions(
+                    mem::take(&mut self.transactions)
+                        .into_iter()
+                        .map(|e| e.into_inner()),
+                ),
             ),
         );
 

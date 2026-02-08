@@ -3,7 +3,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::accumulator_root::accumulator_value_balance_type_maybe;
+use crate::balance::Balance;
 use crate::coin::Coin;
+use crate::{MoveTypeTagTrait, MoveTypeTagTraitGeneric};
 use crate::coin::CoinMetadata;
 use crate::coin::TreasuryCap;
 use crate::coin::COIN_MODULE_NAME;
@@ -13,8 +16,9 @@ use crate::crypto::{
     AuthorityPublicKeyBytes, DefaultHash, MysPublicKey, MysSignature, PublicKey, SignatureScheme,
 };
 pub use crate::digests::{ObjectDigest, TransactionDigest, TransactionEffectsDigest};
-use crate::dynamic_field::DynamicFieldInfo;
-use crate::dynamic_field::DynamicFieldType;
+use crate::dynamic_field::{
+    DynamicFieldInfo, DynamicFieldType, DYNAMIC_FIELD_FIELD_STRUCT_NAME, DYNAMIC_FIELD_MODULE_NAME,
+};
 use crate::effects::TransactionEffects;
 use crate::effects::TransactionEffectsAPI;
 use crate::epoch_data::EpochData;
@@ -184,7 +188,7 @@ pub fn update_object_ref_for_testing(object_ref: ObjectRef) -> ObjectRef {
 
 pub type FullObjectRef = (FullObjectID, SequenceNumber, ObjectDigest);
 
-/// Represents an distinct stream of object versions for a Shared or ConsensusV2 object,
+/// Represents an distinct stream of object versions for a Shared or ConsensusAddressOwner object,
 /// based on the object ID and start version.
 pub type ConsensusObjectSequenceKey = (ObjectID, SequenceNumber);
 
@@ -207,6 +211,13 @@ pub enum MoveObjectType_ {
     StakedMys,
     /// A non-MYS coin type (i.e., `0x2::coin::Coin<T> where T != 0x2::mys::MYS`)
     Coin(TypeTag),
+    /// A MYS balance accumulator field
+    /// (i.e., `0x2::dynamic_field::Field<0x2::accumulator::Key<0x2::balance::Balance<0x2::mys::MYS>>, 0x2::accumulator::U128>`)
+    MysBalanceAccumulatorField,
+    /// A non-MYS balance accumulator field
+    /// (i.e., `0x2::dynamic_field::Field<0x2::accumulator::Key<0x2::balance::Balance<T>>, 0x2::accumulator::U128>`
+    /// where `T != 0x2::mys::MYS`)
+    BalanceAccumulatorField(TypeTag),
     // NOTE: if adding a new type here, and there are existing on-chain objects of that
     // type with Other(_), that is ok, but you must hand-roll PartialEq/Eq/Ord/maybe Hash
     // to make sure the new type and Other(_) are interpreted consistently.
@@ -225,6 +236,8 @@ impl MoveObjectType {
         match &self.0 {
             MoveObjectType_::GasCoin | MoveObjectType_::Coin(_) => MYS_FRAMEWORK_ADDRESS,
             MoveObjectType_::StakedMys => MYS_SYSTEM_ADDRESS,
+            MoveObjectType_::MysBalanceAccumulatorField
+            | MoveObjectType_::BalanceAccumulatorField(_) => MYS_FRAMEWORK_ADDRESS,
             MoveObjectType_::Other(s) => s.address,
         }
     }
@@ -233,6 +246,8 @@ impl MoveObjectType {
         match &self.0 {
             MoveObjectType_::GasCoin | MoveObjectType_::Coin(_) => COIN_MODULE_NAME,
             MoveObjectType_::StakedMys => STAKING_POOL_MODULE_NAME,
+            MoveObjectType_::MysBalanceAccumulatorField
+            | MoveObjectType_::BalanceAccumulatorField(_) => DYNAMIC_FIELD_MODULE_NAME,
             MoveObjectType_::Other(s) => &s.module,
         }
     }
@@ -241,6 +256,8 @@ impl MoveObjectType {
         match &self.0 {
             MoveObjectType_::GasCoin | MoveObjectType_::Coin(_) => COIN_STRUCT_NAME,
             MoveObjectType_::StakedMys => STAKED_MYS_STRUCT_NAME,
+            MoveObjectType_::MysBalanceAccumulatorField
+            | MoveObjectType_::BalanceAccumulatorField(_) => DYNAMIC_FIELD_FIELD_STRUCT_NAME,
             MoveObjectType_::Other(s) => &s.name,
         }
     }
@@ -250,6 +267,12 @@ impl MoveObjectType {
             MoveObjectType_::GasCoin => vec![GAS::type_tag()],
             MoveObjectType_::StakedMys => vec![],
             MoveObjectType_::Coin(inner) => vec![inner.clone()],
+            MoveObjectType_::MysBalanceAccumulatorField => {
+                Self::balance_accumulator_field_type_params(GAS::type_tag())
+            }
+            MoveObjectType_::BalanceAccumulatorField(inner) => {
+                Self::balance_accumulator_field_type_params(inner.clone())
+            }
             MoveObjectType_::Other(s) => s.type_params.clone(),
         }
     }
@@ -259,6 +282,12 @@ impl MoveObjectType {
             MoveObjectType_::GasCoin => vec![GAS::type_tag()],
             MoveObjectType_::StakedMys => vec![],
             MoveObjectType_::Coin(inner) => vec![inner],
+            MoveObjectType_::MysBalanceAccumulatorField => {
+                Self::balance_accumulator_field_type_params(GAS::type_tag())
+            }
+            MoveObjectType_::BalanceAccumulatorField(inner) => {
+                Self::balance_accumulator_field_type_params(inner)
+            }
             MoveObjectType_::Other(s) => s.type_params,
         }
     }
@@ -268,6 +297,8 @@ impl MoveObjectType {
             MoveObjectType_::GasCoin => Some(GAS::type_tag()),
             MoveObjectType_::Coin(inner) => Some(inner.clone()),
             MoveObjectType_::StakedMys => None,
+            MoveObjectType_::MysBalanceAccumulatorField => None,
+            MoveObjectType_::BalanceAccumulatorField(_) => None,
             MoveObjectType_::Other(_) => None,
         }
     }
@@ -282,6 +313,10 @@ impl MoveObjectType {
             MoveObjectType_::GasCoin => 1,
             MoveObjectType_::StakedMys => 1,
             MoveObjectType_::Coin(inner) => bcs::serialized_size(inner).unwrap() + 1,
+            MoveObjectType_::MysBalanceAccumulatorField => 1,
+            MoveObjectType_::BalanceAccumulatorField(inner) => {
+                bcs::serialized_size(inner).unwrap() + 1
+            }
             MoveObjectType_::Other(s) => bcs::serialized_size(s).unwrap() + 1,
         }
     }
@@ -290,7 +325,10 @@ impl MoveObjectType {
     pub fn is_coin(&self) -> bool {
         match &self.0 {
             MoveObjectType_::GasCoin | MoveObjectType_::Coin(_) => true,
-            MoveObjectType_::StakedMys | MoveObjectType_::Other(_) => false,
+            MoveObjectType_::StakedMys
+            | MoveObjectType_::MysBalanceAccumulatorField
+            | MoveObjectType_::BalanceAccumulatorField(_)
+            | MoveObjectType_::Other(_) => false,
         }
     }
 
@@ -298,9 +336,11 @@ impl MoveObjectType {
     pub fn is_gas_coin(&self) -> bool {
         match &self.0 {
             MoveObjectType_::GasCoin => true,
-            MoveObjectType_::StakedMys | MoveObjectType_::Coin(_) | MoveObjectType_::Other(_) => {
-                false
-            }
+            MoveObjectType_::StakedMys
+            | MoveObjectType_::Coin(_)
+            | MoveObjectType_::MysBalanceAccumulatorField
+            | MoveObjectType_::BalanceAccumulatorField(_)
+            | MoveObjectType_::Other(_) => false,
         }
     }
 
@@ -309,33 +349,42 @@ impl MoveObjectType {
         match &self.0 {
             MoveObjectType_::GasCoin => GAS::is_gas_type(t),
             MoveObjectType_::Coin(c) => t == c,
-            MoveObjectType_::StakedMys | MoveObjectType_::Other(_) => false,
+            MoveObjectType_::StakedMys
+            | MoveObjectType_::MysBalanceAccumulatorField
+            | MoveObjectType_::BalanceAccumulatorField(_)
+            | MoveObjectType_::Other(_) => false,
         }
     }
 
     pub fn is_staked_mys(&self) -> bool {
         match &self.0 {
             MoveObjectType_::StakedMys => true,
-            MoveObjectType_::GasCoin | MoveObjectType_::Coin(_) | MoveObjectType_::Other(_) => {
-                false
-            }
+            MoveObjectType_::GasCoin
+            | MoveObjectType_::Coin(_)
+            | MoveObjectType_::MysBalanceAccumulatorField
+            | MoveObjectType_::BalanceAccumulatorField(_)
+            | MoveObjectType_::Other(_) => false,
         }
     }
 
     pub fn is_coin_metadata(&self) -> bool {
         match &self.0 {
-            MoveObjectType_::GasCoin | MoveObjectType_::StakedMys | MoveObjectType_::Coin(_) => {
-                false
-            }
+            MoveObjectType_::GasCoin
+            | MoveObjectType_::StakedMys
+            | MoveObjectType_::Coin(_)
+            | MoveObjectType_::MysBalanceAccumulatorField
+            | MoveObjectType_::BalanceAccumulatorField(_) => false,
             MoveObjectType_::Other(s) => CoinMetadata::is_coin_metadata(s),
         }
     }
 
     pub fn is_treasury_cap(&self) -> bool {
         match &self.0 {
-            MoveObjectType_::GasCoin | MoveObjectType_::StakedMys | MoveObjectType_::Coin(_) => {
-                false
-            }
+            MoveObjectType_::GasCoin
+            | MoveObjectType_::StakedMys
+            | MoveObjectType_::Coin(_)
+            | MoveObjectType_::MysBalanceAccumulatorField
+            | MoveObjectType_::BalanceAccumulatorField(_) => false,
             MoveObjectType_::Other(s) => TreasuryCap::is_treasury_type(s),
         }
     }
@@ -364,20 +413,79 @@ impl MoveObjectType {
             && self.name().as_str() == "DenyCapV2"
     }
 
+    pub fn balance_accumulator_field_type_maybe(&self) -> Option<TypeTag> {
+        match &self.0 {
+            MoveObjectType_::MysBalanceAccumulatorField => Some(GAS::type_tag()),
+            MoveObjectType_::BalanceAccumulatorField(inner) => Some(inner.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn is_balance_accumulator_field(&self) -> bool {
+        matches!(
+            self.0,
+            MoveObjectType_::MysBalanceAccumulatorField
+                | MoveObjectType_::BalanceAccumulatorField(_)
+        )
+    }
+
+    pub fn is_mys_balance_accumulator_field(&self) -> bool {
+        matches!(self.0, MoveObjectType_::MysBalanceAccumulatorField)
+    }
+
+    fn balance_accumulator_field_type_params(inner_type: TypeTag) -> Vec<TypeTag> {
+        use crate::accumulator_root::{AccumulatorKey, U128};
+        let balance_type = Balance::type_tag(inner_type);
+        let key_type = <AccumulatorKey as MoveTypeTagTraitGeneric>::get_type_tag(&[balance_type]);
+        let u128_type = <U128 as MoveTypeTagTrait>::get_type_tag();
+        vec![key_type, u128_type]
+    }
+
+    /// Map from T to Field<AccumulatorKey<Balance<T>>, U128>
+    fn balance_accumulator_field_struct_tag(inner_type: TypeTag) -> StructTag {
+        use crate::accumulator_root::{AccumulatorKey, U128};
+        let balance_type = Balance::type_tag(inner_type);
+        let key_type = <AccumulatorKey as MoveTypeTagTraitGeneric>::get_type_tag(&[balance_type]);
+        let u128_type = <U128 as MoveTypeTagTrait>::get_type_tag();
+        DynamicFieldInfo::dynamic_field_type(key_type, u128_type)
+    }
+
     pub fn is_dynamic_field(&self) -> bool {
         match &self.0 {
             MoveObjectType_::GasCoin | MoveObjectType_::StakedMys | MoveObjectType_::Coin(_) => {
                 false
             }
+            MoveObjectType_::MysBalanceAccumulatorField
+            | MoveObjectType_::BalanceAccumulatorField(_) => true, // These are dynamic fields
             MoveObjectType_::Other(s) => DynamicFieldInfo::is_dynamic_field(s),
+        }
+    }
+
+    pub fn is_currency(&self) -> bool {
+        match &self.0 {
+            MoveObjectType_::GasCoin
+            | MoveObjectType_::StakedMys
+            | MoveObjectType_::Coin(_)
+            | MoveObjectType_::MysBalanceAccumulatorField
+            | MoveObjectType_::BalanceAccumulatorField(_) => false,
+            MoveObjectType_::Other(_s) => {
+                // Stub implementation: coin_registry module doesn't exist in mys-types yet
+                // For now, return false. This can be enhanced when coin_registry is added.
+                // In mys-types, this checks: coin_registry::Currency::is_currency(s)
+                false
+            }
         }
     }
 
     pub fn try_extract_field_name(&self, type_: &DynamicFieldType) -> MysResult<TypeTag> {
         match &self.0 {
-            MoveObjectType_::GasCoin | MoveObjectType_::StakedMys | MoveObjectType_::Coin(_) => {
+            MoveObjectType_::GasCoin
+            | MoveObjectType_::StakedMys
+            | MoveObjectType_::Coin(_)
+            | MoveObjectType_::MysBalanceAccumulatorField
+            | MoveObjectType_::BalanceAccumulatorField(_) => {
                 Err(MysError::ObjectDeserializationError {
-                    error: "Error extracting dynamic object name from Coin object".to_string(),
+                    error: "Error extracting dynamic object name from Coin/accumulator object".to_string(),
                 })
             }
             MoveObjectType_::Other(s) => DynamicFieldInfo::try_extract_field_name(s, type_),
@@ -386,9 +494,13 @@ impl MoveObjectType {
 
     pub fn try_extract_field_value(&self) -> MysResult<TypeTag> {
         match &self.0 {
-            MoveObjectType_::GasCoin | MoveObjectType_::StakedMys | MoveObjectType_::Coin(_) => {
+            MoveObjectType_::GasCoin
+            | MoveObjectType_::StakedMys
+            | MoveObjectType_::Coin(_)
+            | MoveObjectType_::MysBalanceAccumulatorField
+            | MoveObjectType_::BalanceAccumulatorField(_) => {
                 Err(MysError::ObjectDeserializationError {
-                    error: "Error extracting dynamic object value from Coin object".to_string(),
+                    error: "Error extracting dynamic object value from Coin/accumulator object".to_string(),
                 })
             }
             MoveObjectType_::Other(s) => DynamicFieldInfo::try_extract_field_value(s),
@@ -401,6 +513,14 @@ impl MoveObjectType {
             MoveObjectType_::StakedMys => StakedMys::is_staked_mys(s),
             MoveObjectType_::Coin(inner) => {
                 Coin::is_coin(s) && s.type_params.len() == 1 && inner == &s.type_params[0]
+            }
+            MoveObjectType_::MysBalanceAccumulatorField => accumulator_value_balance_type_maybe(s)
+                .map(|t| GAS::is_gas_type(&t))
+                .unwrap_or(false),
+            MoveObjectType_::BalanceAccumulatorField(inner) => {
+                accumulator_value_balance_type_maybe(s)
+                    .map(|t| &t == inner)
+                    .unwrap_or(false)
             }
             MoveObjectType_::Other(o) => s == o,
         }
@@ -429,6 +549,12 @@ impl From<StructTag> for MoveObjectType {
             MoveObjectType_::Coin(s.type_params.pop().unwrap())
         } else if StakedMys::is_staked_mys(&s) {
             MoveObjectType_::StakedMys
+        } else if let Some(balance_type) = accumulator_value_balance_type_maybe(&s) {
+            if GAS::is_gas_type(&balance_type) {
+                MoveObjectType_::MysBalanceAccumulatorField
+            } else {
+                MoveObjectType_::BalanceAccumulatorField(balance_type)
+            }
         } else {
             MoveObjectType_::Other(s)
         })
@@ -441,6 +567,12 @@ impl From<MoveObjectType> for StructTag {
             MoveObjectType_::GasCoin => GasCoin::type_(),
             MoveObjectType_::StakedMys => StakedMys::type_(),
             MoveObjectType_::Coin(inner) => Coin::type_(inner),
+            MoveObjectType_::MysBalanceAccumulatorField => {
+                MoveObjectType::balance_accumulator_field_struct_tag(GAS::type_tag())
+            }
+            MoveObjectType_::BalanceAccumulatorField(inner) => {
+                MoveObjectType::balance_accumulator_field_struct_tag(inner)
+            }
             MoveObjectType_::Other(s) => s,
         }
     }
@@ -931,6 +1063,13 @@ pub const RESOLVED_UTF8_STR: (&AccountAddress, &IdentStr, &IdentStr) = (
 pub const TX_CONTEXT_MODULE_NAME: &IdentStr = ident_str!("tx_context");
 pub const TX_CONTEXT_STRUCT_NAME: &IdentStr = ident_str!("TxContext");
 
+pub const URL_MODULE_NAME: &IdentStr = ident_str!("url");
+pub const URL_STRUCT_NAME: &IdentStr = ident_str!("Url");
+
+pub const VEC_MAP_MODULE_NAME: &IdentStr = ident_str!("vec_map");
+pub const VEC_MAP_STRUCT_NAME: &IdentStr = ident_str!("VecMap");
+pub const VEC_MAP_ENTRY_STRUCT_NAME: &IdentStr = ident_str!("Entry");
+
 pub fn move_ascii_str_layout() -> A::MoveStructLayout {
     A::MoveStructLayout {
         type_: StructTag {
@@ -957,6 +1096,21 @@ pub fn move_utf8_str_layout() -> A::MoveStructLayout {
         fields: Box::new(vec![A::MoveFieldLayout::new(
             ident_str!("bytes").into(),
             A::MoveTypeLayout::Vector(Box::new(A::MoveTypeLayout::U8)),
+        )]),
+    }
+}
+
+pub fn url_layout() -> A::MoveStructLayout {
+    A::MoveStructLayout {
+        type_: StructTag {
+            address: MYS_FRAMEWORK_ADDRESS,
+            module: URL_MODULE_NAME.to_owned(),
+            name: URL_STRUCT_NAME.to_owned(),
+            type_params: vec![],
+        },
+        fields: Box::new(vec![A::MoveFieldLayout::new(
+            ident_str!("url").to_owned(),
+            A::MoveTypeLayout::Struct(Box::new(move_ascii_str_layout())),
         )]),
     }
 }

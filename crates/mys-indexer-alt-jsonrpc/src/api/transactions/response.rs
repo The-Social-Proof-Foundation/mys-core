@@ -6,37 +6,43 @@ use std::str::FromStr;
 
 use anyhow::Context as _;
 use futures::future::OptionFuture;
-use move_core_types::annotated_value::{MoveDatatypeLayout, MoveTypeLayout};
-use mys_indexer_alt_schema::transactions::{
-    BalanceChange, StoredTransaction, StoredTxBalanceChange,
-};
-use mys_json_rpc_types::{
-    BalanceChange as MysBalanceChange, MysEvent, MysTransactionBlock, MysTransactionBlockData,
-    MysTransactionBlockEffects, MysTransactionBlockEvents, MysTransactionBlockResponse,
-    MysTransactionBlockResponseOptions, ObjectChange as MysObjectChange,
-};
-use mys_types::{
-    base_types::{ObjectID, SequenceNumber},
-    digests::{ObjectDigest, TransactionDigest},
-    effects::{IDOperation, ObjectChange, TransactionEffects, TransactionEffectsAPI},
-    event::Event,
-    object::Object,
-    signature::GenericSignature,
-    transaction::{TransactionData, TransactionDataAPI},
-    TypeTag,
-};
+use move_core_types::annotated_value::MoveDatatypeLayout;
+use move_core_types::annotated_value::MoveTypeLayout;
+use mys_indexer_alt_reader::kv_loader::TransactionContents;
+use mys_indexer_alt_reader::objects::VersionedObjectKey;
+use mys_indexer_alt_reader::tx_balance_changes::TxBalanceChangeKey;
+use mys_indexer_alt_schema::transactions::BalanceChange;
+use mys_indexer_alt_schema::transactions::StoredTxBalanceChange;
+use mys_json_rpc_types::BalanceChange as MysBalanceChange;
+use mys_json_rpc_types::ObjectChange as MysObjectChange;
+use mys_json_rpc_types::MysEvent;
+use mys_json_rpc_types::MysTransactionBlock;
+use mys_json_rpc_types::MysTransactionBlockData;
+use mys_json_rpc_types::MysTransactionBlockEffects;
+use mys_json_rpc_types::MysTransactionBlockEvents;
+use mys_json_rpc_types::MysTransactionBlockResponse;
+use mys_json_rpc_types::MysTransactionBlockResponseOptions;
+use mys_types::TypeTag;
+use mys_types::base_types::ObjectID;
+use mys_types::base_types::SequenceNumber;
+use mys_types::digests::ObjectDigest;
+use mys_types::digests::TransactionDigest;
+use mys_types::effects::IDOperation;
+use mys_types::effects::ObjectChange;
+use mys_types::effects::TransactionEffects;
+use mys_types::effects::TransactionEffectsAPI;
+use mys_types::event::Event;
+use mys_types::object::Object;
+use mys_types::signature::GenericSignature;
+use mys_types::transaction::TransactionData;
+use mys_types::transaction::TransactionDataAPI;
 use tokio::join;
 
-use crate::{
-    context::Context,
-    data::{
-        objects::VersionedObjectKey, transactions::TransactionKey,
-        tx_balance_changes::TxBalanceChangeKey,
-    },
-    error::{internal_error, invalid_params, rpc_bail, RpcError},
-};
-
-use super::error::Error;
+use crate::api::transactions::error::Error;
+use crate::context::Context;
+use crate::error::RpcError;
+use crate::error::invalid_params;
+use crate::error::rpc_bail;
 
 /// Fetch the necessary data from the stores in `ctx` and transform it to build a response for the
 /// transaction identified by `digest`, according to the response `options`.
@@ -45,15 +51,15 @@ pub(super) async fn transaction(
     digest: TransactionDigest,
     options: &MysTransactionBlockResponseOptions,
 ) -> Result<MysTransactionBlockResponse, RpcError<Error>> {
-    let stored_tx = ctx.loader().load_one(TransactionKey(digest));
+    let tx = ctx.kv_loader().load_one_transaction(digest);
     let stored_bc: OptionFuture<_> = options
         .show_balance_changes
-        .then(|| ctx.loader().load_one(TxBalanceChangeKey(digest)))
+        .then(|| ctx.pg_loader().load_one(TxBalanceChangeKey(digest)))
         .into();
 
-    let (stored_tx, stored_bc) = join!(stored_tx, stored_bc);
+    let (tx, stored_bc) = join!(tx, stored_bc);
 
-    let stored_tx = stored_tx
+    let tx = tx
         .context("Failed to fetch transaction from store")?
         .ok_or_else(|| invalid_params(Error::NotFound(digest)))?;
 
@@ -63,34 +69,36 @@ pub(super) async fn transaction(
         .transpose()
         .context("Failed to fetch balance changes from store")?
     {
-        Some(None) => return Err(invalid_params(Error::PrunedBalanceChanges(digest))),
+        Some(None) => return Err(invalid_params(Error::BalanceChangesNotFound(digest))),
         Some(changes) => changes,
         None => None,
     };
 
-    let digest = TransactionDigest::try_from(stored_tx.tx_digest.clone())
-        .context("Failed to deserialize transaction digest")?;
+    let digest = tx.digest()?;
 
     let mut response = MysTransactionBlockResponse::new(digest);
 
+    response.timestamp_ms = tx.timestamp_ms();
+    response.checkpoint = tx.cp_sequence_number();
+
     if options.show_input {
-        response.transaction = Some(input(ctx, &stored_tx).await?);
+        response.transaction = Some(input(ctx, &tx).await?);
     }
 
     if options.show_raw_input {
-        response.raw_transaction = stored_tx.raw_transaction.clone();
+        response.raw_transaction = tx.raw_transaction()?;
     }
 
     if options.show_effects {
-        response.effects = Some(effects(&stored_tx)?);
+        response.effects = Some(effects(&tx)?);
     }
 
     if options.show_raw_effects {
-        response.raw_effects = stored_tx.raw_effects.clone();
+        response.raw_effects = tx.raw_effects()?;
     }
 
     if options.show_events {
-        response.events = Some(events(ctx, digest, &stored_tx).await?);
+        response.events = Some(events(ctx, digest, &tx).await?);
     }
 
     if let Some(changes) = stored_bc {
@@ -98,7 +106,7 @@ pub(super) async fn transaction(
     }
 
     if options.show_object_changes {
-        response.object_changes = Some(object_changes(ctx, digest, &stored_tx).await?);
+        response.object_changes = Some(object_changes(ctx, digest, &tx).await?);
     }
 
     Ok(response)
@@ -107,12 +115,10 @@ pub(super) async fn transaction(
 /// Extract a representation of the transaction's input data from the stored form.
 async fn input(
     ctx: &Context,
-    tx: &StoredTransaction,
+    tx: &TransactionContents,
 ) -> Result<MysTransactionBlock, RpcError<Error>> {
-    let data: TransactionData =
-        bcs::from_bytes(&tx.raw_transaction).context("Failed to deserialize TransactionData")?;
-    let tx_signatures: Vec<GenericSignature> =
-        bcs::from_bytes(&tx.user_signatures).context("Failed to deserialize user signatures")?;
+    let data: TransactionData = tx.data()?;
+    let tx_signatures: Vec<GenericSignature> = tx.signatures()?;
 
     Ok(MysTransactionBlock {
         data: MysTransactionBlockData::try_from_with_package_resolver(data, ctx.package_resolver())
@@ -123,9 +129,8 @@ async fn input(
 }
 
 /// Extract a representation of the transaction's effects from the stored form.
-fn effects(tx: &StoredTransaction) -> Result<MysTransactionBlockEffects, RpcError<Error>> {
-    let effects: TransactionEffects =
-        bcs::from_bytes(&tx.raw_effects).context("Failed to deserialize TransactionEffects")?;
+fn effects(tx: &TransactionContents) -> Result<MysTransactionBlockEffects, RpcError<Error>> {
+    let effects: TransactionEffects = tx.effects()?;
     Ok(effects
         .try_into()
         .context("Failed to convert Effects into response")?)
@@ -135,9 +140,9 @@ fn effects(tx: &StoredTransaction) -> Result<MysTransactionBlockEffects, RpcErro
 async fn events(
     ctx: &Context,
     digest: TransactionDigest,
-    tx: &StoredTransaction,
+    tx: &TransactionContents,
 ) -> Result<MysTransactionBlockEvents, RpcError<Error>> {
-    let events: Vec<Event> = bcs::from_bytes(&tx.events).context("Failed to deserialize Events")?;
+    let events: Vec<Event> = tx.events()?;
     let mut mys_events = Vec::with_capacity(events.len());
 
     for (ix, event) in events.into_iter().enumerate() {
@@ -159,14 +164,8 @@ async fn events(
             ),
         };
 
-        let mys_event = MysEvent::try_from(
-            event,
-            digest,
-            ix as u64,
-            Some(tx.timestamp_ms as u64),
-            layout,
-        )
-        .with_context(|| format!("Failed to convert Event {ix} into response"))?;
+        let mys_event = MysEvent::try_from(event, digest, ix as u64, tx.timestamp_ms(), layout)
+            .with_context(|| format!("Failed to convert Event {ix} into response"))?;
 
         mys_events.push(mys_event)
     }
@@ -206,12 +205,10 @@ fn balance_changes(
 async fn object_changes(
     ctx: &Context,
     digest: TransactionDigest,
-    tx: &StoredTransaction,
+    tx: &TransactionContents,
 ) -> Result<Vec<MysObjectChange>, RpcError<Error>> {
-    let tx_data: TransactionData =
-        bcs::from_bytes(&tx.raw_transaction).context("Failed to deserialize TransactionData")?;
-    let effects: TransactionEffects =
-        bcs::from_bytes(&tx.raw_effects).context("Failed to deserialize TransactionEffects")?;
+    let tx_data: TransactionData = tx.data()?;
+    let effects: TransactionEffects = tx.effects()?;
 
     let mut keys = vec![];
     let native_changes = effects.object_changes();
@@ -226,8 +223,8 @@ async fn object_changes(
     }
 
     let objects = ctx
-        .loader()
-        .load_many(keys)
+        .kv_loader()
+        .load_many_objects(keys)
         .await
         .context("Failed to fetch object contents")?;
 
@@ -244,19 +241,11 @@ async fn object_changes(
 
         let v = v.value();
 
-        let stored = objects
+        let o = objects
             .get(&VersionedObjectKey(id, v))
             .ok_or_else(|| invalid_params(Error::PrunedObject(digest, id, v)))?;
 
-        let bytes = stored
-            .serialized_object
-            .as_ref()
-            .with_context(|| format!("No content for object {id} at version {v}"))?;
-
-        let o = bcs::from_bytes(bytes)
-            .with_context(|| format!("Failed to deserialize object {id} at version {v}"))?;
-
-        Ok(Some((o, d)))
+        Ok(Some((o.clone(), d)))
     };
 
     let mut changes = Vec::with_capacity(native_changes.len());
@@ -314,7 +303,7 @@ async fn object_changes(
                 owner: o.owner().clone(),
                 object_type: o
                     .struct_tag()
-                    .ok_or_else(|| internal_error!("No type for object {object_id}"))?,
+                    .with_context(|| format!("No type for object {object_id}"))?,
                 object_id,
                 version: o.version(),
                 digest: d,
@@ -326,7 +315,7 @@ async fn object_changes(
                     recipient: o.owner().clone(),
                     object_type: o
                         .struct_tag()
-                        .ok_or_else(|| internal_error!("No type for object {object_id}"))?,
+                        .with_context(|| format!("No type for object {object_id}"))?,
                     object_id,
                     version: o.version(),
                     digest: od,
@@ -338,7 +327,7 @@ async fn object_changes(
                 owner: o.owner().clone(),
                 object_type: o
                     .struct_tag()
-                    .ok_or_else(|| internal_error!("No type for object {object_id}"))?,
+                    .with_context(|| format!("No type for object {object_id}"))?,
                 object_id,
                 version: o.version(),
                 previous_version: i.version(),
@@ -349,7 +338,7 @@ async fn object_changes(
                 sender: tx_data.sender(),
                 object_type: i
                     .struct_tag()
-                    .ok_or_else(|| internal_error!("No type for object {object_id}"))?,
+                    .with_context(|| format!("No type for object {object_id}"))?,
                 object_id,
                 version: effects.lamport_version(),
             },
@@ -358,7 +347,7 @@ async fn object_changes(
                 sender: tx_data.sender(),
                 object_type: i
                     .struct_tag()
-                    .ok_or_else(|| internal_error!("No type for object {object_id}"))?,
+                    .with_context(|| format!("No type for object {object_id}"))?,
                 object_id,
                 version: effects.lamport_version(),
             },

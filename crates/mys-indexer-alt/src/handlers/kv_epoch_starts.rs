@@ -5,60 +5,71 @@
 use std::ops::Range;
 use std::sync::Arc;
 
-use anyhow::{bail, Context, Result};
-use diesel::{ExpressionMethods, QueryDsl};
+use anyhow::Context;
+use anyhow::Result;
+use anyhow::bail;
+use async_trait::async_trait;
+use diesel::ExpressionMethods;
+use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
-use mys_indexer_alt_framework::{
-    models::cp_sequence_numbers::epoch_interval,
-    pipeline::{concurrent::Handler, Processor},
-};
-use mys_indexer_alt_schema::{epochs::StoredEpochStart, schema::kv_epoch_starts};
-use mys_pg_db as db;
-use mys_types::{
-    full_checkpoint_content::CheckpointData,
-    mys_system_state::{get_mys_system_state, MysSystemStateTrait},
-    transaction::{TransactionDataAPI, TransactionKind},
-};
+use mys_indexer_alt_framework::pipeline::Processor;
+use mys_indexer_alt_framework::postgres::Connection;
+use mys_indexer_alt_framework::postgres::handler::Handler;
+use mys_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
+use mys_indexer_alt_framework::types::mys_system_state::MysSystemStateTrait;
+use mys_indexer_alt_framework::types::mys_system_state::get_mys_system_state;
+use mys_indexer_alt_framework::types::transaction::TransactionKind;
+use mys_indexer_alt_schema::epochs::StoredEpochStart;
+use mys_indexer_alt_schema::schema::kv_epoch_starts;
+use mys_types::transaction::TransactionDataAPI;
+
+use crate::handlers::cp_sequence_numbers::epoch_interval;
 
 pub(crate) struct KvEpochStarts;
 
+#[async_trait]
 impl Processor for KvEpochStarts {
     const NAME: &'static str = "kv_epoch_starts";
 
     type Value = StoredEpochStart;
 
-    fn process(&self, checkpoint: &Arc<CheckpointData>) -> Result<Vec<Self::Value>> {
-        let CheckpointData {
-            checkpoint_summary,
+    async fn process(&self, checkpoint: &Arc<Checkpoint>) -> Result<Vec<Self::Value>> {
+        let Checkpoint {
+            summary,
             transactions,
             ..
         } = checkpoint.as_ref();
 
         // If this is the last checkpoint in the current epoch, it will contain enough information
         // about the start of the next epoch.
-        if !checkpoint_summary.is_last_checkpoint_of_epoch() {
+        if !summary.is_last_checkpoint_of_epoch() {
             return Ok(vec![]);
         }
 
         let Some(transaction) = transactions.iter().find(|tx| {
             matches!(
-                tx.transaction.intent_message().value.kind(),
+                tx.transaction.kind(),
                 TransactionKind::ChangeEpoch(_) | TransactionKind::EndOfEpochTransaction(_)
             )
         }) else {
             bail!(
                 "Failed to get end of epoch transaction in checkpoint {} with EndOfEpochData",
-                checkpoint_summary.sequence_number,
+                summary.sequence_number,
             );
         };
 
-        let system_state = get_mys_system_state(&transaction.output_objects.as_slice())
+        let output_objects: Vec<_> = transaction
+            .output_objects(&checkpoint.object_set)
+            .cloned()
+            .collect();
+
+        let system_state = get_mys_system_state(&output_objects.as_slice())
             .context("Failed to find system state object output from end of epoch transaction")?;
 
         Ok(vec![StoredEpochStart {
             epoch: system_state.epoch() as i64,
             protocol_version: system_state.protocol_version() as i64,
-            cp_lo: checkpoint_summary.sequence_number as i64 + 1,
+            cp_lo: summary.sequence_number as i64 + 1,
             start_timestamp_ms: system_state.epoch_start_timestamp_ms() as i64,
             reference_gas_price: system_state.reference_gas_price() as i64,
             system_state: bcs::to_bytes(&system_state)
@@ -67,11 +78,11 @@ impl Processor for KvEpochStarts {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl Handler for KvEpochStarts {
     const MIN_EAGER_ROWS: usize = 1;
 
-    async fn commit(values: &[Self::Value], conn: &mut db::Connection<'_>) -> Result<usize> {
+    async fn commit<'a>(values: &[Self::Value], conn: &mut Connection<'a>) -> Result<usize> {
         Ok(diesel::insert_into(kv_epoch_starts::table)
             .values(values)
             .on_conflict_do_nothing()
@@ -79,11 +90,11 @@ impl Handler for KvEpochStarts {
             .await?)
     }
 
-    async fn prune(
+    async fn prune<'a>(
         &self,
         from: u64,
         to_exclusive: u64,
-        conn: &mut db::Connection<'_>,
+        conn: &mut Connection<'a>,
     ) -> Result<usize> {
         let Range {
             start: from_epoch,

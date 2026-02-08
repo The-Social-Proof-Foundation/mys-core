@@ -56,7 +56,7 @@ pub struct Resolver<S> {
 
 /// Optional configuration that imposes limits on the work that the resolver can do for each
 /// request.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Limits {
     /// Maximum recursion depth through type parameters.
     pub max_type_argument_depth: usize,
@@ -112,6 +112,8 @@ pub struct CleverError {
     pub error_info: ErrorConstants,
     /// The line number in the source file where the error occured.
     pub source_line_number: u16,
+    /// The error code of the abort
+    pub error_code: Option<u8>,
 }
 
 /// The `ErrorConstants` enum is used to represent the different kinds of error information that
@@ -310,6 +312,13 @@ macro_rules! as_ref_impl {
 as_ref_impl!(Arc<dyn PackageStore>);
 as_ref_impl!(Box<dyn PackageStore>);
 
+#[async_trait]
+impl<S: PackageStore> PackageStore for Arc<S> {
+    async fn fetch(&self, id: AccountAddress) -> Result<Arc<Package>> {
+        self.as_ref().fetch(id).await
+    }
+}
+
 /// Check $value does not exceed $limit in config, if the limit config exists, returning an error
 /// containing the max value and actual value otherwise.
 macro_rules! check_max_limit {
@@ -467,6 +476,45 @@ impl<S: PackageStore> Resolver<S> {
         Ok(sigs)
     }
 
+    /// Returns the signature of function `pkg::module::function` in the package store, assuming the function exists.
+    pub async fn function_signature(
+        &self,
+        pkg: AccountAddress,
+        module: &str,
+        function: &str,
+    ) -> Result<FunctionDef> {
+        let mut context = ResolutionContext::new(self.limits.as_ref());
+
+        let package = self.package_store.fetch(pkg).await?;
+        let Some(mut def) = package.module(module)?.function_def(function)? else {
+            return Err(Error::FunctionNotFound(
+                pkg,
+                module.to_string(),
+                function.to_string(),
+            ));
+        };
+
+        // (1). Fetch all the information from this store that is necessary to resolve types
+        // referenced by this tag.
+        for sig in def.parameters.iter().chain(def.return_.iter()) {
+            context
+                .add_signature(
+                    sig.body.clone(),
+                    &self.package_store,
+                    package.as_ref(),
+                    /* visit_fields */ false,
+                )
+                .await?;
+        }
+
+        // (2). Use that information to relocate package IDs in the signature.
+        for sig in def.parameters.iter_mut().chain(def.return_.iter_mut()) {
+            context.relocate_signature(&mut sig.body)?;
+        }
+
+        Ok(def)
+    }
+
     /// Attempts to infer the type layouts for pure inputs to the programmable transaction.
     ///
     /// The returned vector contains an element for each input to `tx`. Elements corresponding to
@@ -601,6 +649,9 @@ impl<S: PackageStore> Resolver<S> {
         let package = self.package_store.fetch(*module_id.address()).await.ok()?;
         let module = package.module(module_id.name().as_str()).ok()?.bytecode();
         let source_line_number = bitset.line_number()?;
+        // ErrorBitset in mys-package-resolver doesn't have error_code() method yet
+        // Set to None until ErrorBitset is updated to support error codes
+        let error_code = None;
 
         // We only have a line number in our clever error, so return early.
         if bitset.identifier_index().is_none() && bitset.constant_index().is_none() {
@@ -608,6 +659,7 @@ impl<S: PackageStore> Resolver<S> {
                 module_id,
                 error_info: ErrorConstants::None,
                 source_line_number,
+                error_code,
             });
         } else if bitset.identifier_index().is_none() || bitset.constant_index().is_none() {
             return None;
@@ -647,6 +699,7 @@ impl<S: PackageStore> Resolver<S> {
             module_id,
             error_info,
             source_line_number,
+            error_code,
         })
     }
 }
@@ -702,6 +755,10 @@ impl<T: PackageStore> PackageStore for PackageStoreWithLruCache<T> {
 }
 
 impl Package {
+    pub fn storage_id(&self) -> AccountAddress {
+        self.storage_id
+    }
+
     pub fn read_from_object(object: &Object) -> Result<Self> {
         let storage_id = AccountAddress::from(object.id());
         let Some(package) = object.data.try_as_package() else {

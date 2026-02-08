@@ -13,7 +13,7 @@ use serde::Serialize;
 use crate::{
     base_types::{MysAddress, ObjectID, ObjectRef},
     move_package::PACKAGE_MODULE_NAME,
-    transaction::{Argument, CallArg, Command, ObjectArg, ProgrammableTransaction},
+    transaction::{Argument, CallArg, Command, FundsWithdrawalArg, ObjectArg, ProgrammableTransaction, SharedObjectMutability},
     MYS_FRAMEWORK_PACKAGE_ID,
 };
 
@@ -22,6 +22,7 @@ enum BuilderArg {
     Object(ObjectID),
     Pure(Vec<u8>),
     ForcedNonUniquePure(usize),
+    FundsWithdraw(usize),
 }
 
 #[derive(Default)]
@@ -72,18 +73,21 @@ impl ProgrammableTransactionBuilder {
             let old_obj_arg = match old_value {
                 CallArg::Pure(_) => anyhow::bail!("invariant violation! object has pure argument"),
                 CallArg::Object(arg) => arg,
+                CallArg::FundsWithdrawal(_) => {
+                    anyhow::bail!("invariant violation! object has balance withdraw argument")
+                }
             };
             match (old_obj_arg, obj_arg) {
                 (
                     ObjectArg::SharedObject {
                         id: id1,
                         initial_shared_version: v1,
-                        mutable: mut1,
+                        mutability: mut1,
                     },
                     ObjectArg::SharedObject {
                         id: id2,
                         initial_shared_version: v2,
-                        mutable: mut2,
+                        mutability: mut2,
                     },
                 ) if v1 == &v2 => {
                     anyhow::ensure!(
@@ -93,7 +97,13 @@ impl ProgrammableTransactionBuilder {
                     ObjectArg::SharedObject {
                         id,
                         initial_shared_version: v2,
-                        mutable: *mut1 || mut2,
+                        mutability: if *mut1 == SharedObjectMutability::Mutable || mut2 == SharedObjectMutability::Mutable {
+                            SharedObjectMutability::Mutable
+                        } else if *mut1 == SharedObjectMutability::NonExclusiveWrite || mut2 == SharedObjectMutability::NonExclusiveWrite {
+                            SharedObjectMutability::NonExclusiveWrite
+                        } else {
+                            SharedObjectMutability::Immutable
+                        },
                     }
                 }
                 (old_obj_arg, obj_arg) => {
@@ -114,10 +124,19 @@ impl ProgrammableTransactionBuilder {
         Ok(Argument::Input(i as u16))
     }
 
+    pub fn funds_withdrawal(&mut self, arg: FundsWithdrawalArg) -> anyhow::Result<Argument> {
+        let (i, _) = self.inputs.insert_full(
+            BuilderArg::FundsWithdraw(self.inputs.len()),
+            CallArg::FundsWithdrawal(arg),
+        );
+        Ok(Argument::Input(i as u16))
+    }
+
     pub fn input(&mut self, call_arg: CallArg) -> anyhow::Result<Argument> {
         match call_arg {
             CallArg::Pure(bytes) => Ok(self.pure_bytes(bytes, /* force separate */ false)),
             CallArg::Object(obj) => self.obj(obj),
+            CallArg::FundsWithdrawal(arg) => self.funds_withdrawal(arg),
         }
     }
 

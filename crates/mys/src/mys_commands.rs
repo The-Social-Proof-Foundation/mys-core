@@ -28,10 +28,11 @@ use mys_config::{
     MYS_BENCHMARK_GENESIS_GAS_KEYSTORE_FILENAME, MYS_GENESIS_FILENAME, MYS_KEYSTORE_FILENAME,
 };
 use mys_faucet::{create_wallet_context, start_faucet, AppState, FaucetConfig, SimpleFaucet};
-use mys_indexer::config::SocialIndexerConfig;
-use mys_indexer::test_utils::{
-    start_indexer_jsonrpc_for_testing, start_indexer_writer_for_testing,
-};
+// Old indexer architecture removed - mys-indexer crate has been removed
+// use mys_indexer::config::SocialIndexerConfig;
+// use mys_indexer::test_utils::{
+//     start_indexer_jsonrpc_for_testing, start_indexer_writer_for_testing,
+// };
 use rand::rngs::OsRng;
 use std::io::{stderr, stdout, Write};
 use std::net::{AddrParseError, IpAddr, Ipv4Addr, SocketAddr};
@@ -40,10 +41,11 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{fs, io};
 
-use mys_graphql_rpc::{
-    config::{ConnectionConfig, ServiceConfig},
-    test_infra::cluster::start_graphql_server_with_fn_rpc,
-};
+// Old graphql-rpc architecture removed
+// use mys_graphql_rpc::{
+//     config::{ConnectionConfig, ServiceConfig},
+//     test_infra::cluster::start_graphql_server_with_fn_rpc,
+// };
 
 use mys_keys::keypair_file::read_key;
 use mys_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
@@ -832,63 +834,18 @@ async fn start(
     let fullnode_url = format!("http://{}", fullnode_url);
     info!("Fullnode URL: {}", fullnode_url);
 
+    // Old indexer architecture removed - mys-indexer crate has been removed
     if let Some(input) = with_indexer {
-        let indexer_address = parse_host_port(input, DEFAULT_INDEXER_PORT)
-            .map_err(|_| anyhow!("Invalid indexer host and port"))?;
-        info!("Starting the indexer service at {indexer_address}");
-        // Start in reader mode
-        start_indexer_jsonrpc_for_testing(
-            pg_address.clone(),
-            fullnode_url.clone(),
-            indexer_address.to_string(),
-            None,
-        )
-        .await;
-        info!("Indexer started in reader mode");
-        
-        // Auto-enable social indexer when --with-indexer is used
-        // Hardcoded framework address: 0x50c1
-        let social_config = SocialIndexerConfig {
-            enable_social_indexer: true,
-            mysocial_package_address: Some("0x50c1".to_string()),
-            social_database_url: None, // Uses main DB by default
-            social_db_max_connections: 10,
-        };
-        
-        start_indexer_writer_for_testing(
-            pg_address.clone(),
-            None,
-            None,
-            // We ensured above that this is set to something if --with-indexer is set
-            data_ingestion_dir,
-            None,
-            None, /* start_checkpoint */
-            None, /* end_checkpoint */
-            Some(social_config), // Pass enabled social config
-        )
-        .await;
-        info!("Indexer started in writer mode");
+        return Err(anyhow::anyhow!(
+            "The --with-indexer flag is no longer supported. The old mys-indexer architecture has been removed."
+        ));
     }
 
+    // Old graphql-rpc architecture removed
     if let Some(input) = with_graphql {
-        let graphql_address = parse_host_port(input, DEFAULT_GRAPHQL_PORT)
-            .map_err(|_| anyhow!("Invalid graphql host and port"))?;
-        tracing::info!("Starting the GraphQL service at {graphql_address}");
-        let graphql_connection_config = ConnectionConfig {
-            port: graphql_address.port(),
-            host: graphql_address.ip().to_string(),
-            db_url: pg_address,
-            ..Default::default()
-        };
-
-        start_graphql_server_with_fn_rpc(
-            graphql_connection_config,
-            Some(fullnode_url.clone()),
-            None, // it will be initialized by default
-            ServiceConfig::test_defaults(),
-        )
-        .await;
-        info!("GraphQL started");
+        return Err(anyhow::anyhow!(
+            "The --with-graphql flag is no longer supported. The old mys-graphql-rpc architecture has been removed."
+        ));
     }
 
     if let Some(input) = with_faucet {

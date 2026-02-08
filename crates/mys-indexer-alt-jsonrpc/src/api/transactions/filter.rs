@@ -2,35 +2,92 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{anyhow, Context as _};
-use diesel::{
-    dsl::sql,
-    expression::{
-        is_aggregate::{Never, No},
-        MixedAggregates, ValidGrouping,
+use std::collections::HashMap;
+use std::time::Duration;
+
+use anyhow::Context as _;
+use diesel::AppearsOnTable;
+use diesel::Column;
+use diesel::Expression;
+use diesel::ExpressionMethods;
+use diesel::QueryDsl;
+use diesel::QuerySource;
+use diesel::expression::MixedAggregates;
+use diesel::expression::ValidGrouping;
+use diesel::expression::is_aggregate::Never;
+use diesel::expression::is_aggregate::No;
+use diesel::pg::Pg;
+use diesel::query_builder::BoxedSelectStatement;
+use diesel::query_builder::FromClause;
+use diesel::query_builder::QueryFragment;
+use diesel::sql_types::BigInt as SqlBigInt;
+use schemars::JsonSchema;
+use serde::Deserialize;
+use serde::Serialize;
+use serde_with::serde_as;
+use mys_indexer_alt_reader::tx_digests::TxDigestKey;
+use mys_indexer_alt_schema::schema::tx_affected_addresses;
+use mys_indexer_alt_schema::schema::tx_affected_objects;
+use mys_indexer_alt_schema::schema::tx_calls;
+use mys_indexer_alt_schema::schema::tx_digests;
+use mys_indexer_alt_schema::transactions::StoredTxDigest;
+use mys_json_rpc_types::Page as PageResponse;
+use mys_json_rpc_types::MysTransactionBlockResponseOptions;
+use mys_sql_macro::sql;
+use mys_types::base_types::ObjectID;
+use mys_types::base_types::MysAddress;
+use mys_types::digests::TransactionDigest;
+use mys_types::messages_checkpoint::CheckpointSequenceNumber;
+use mys_types::mys_serde::BigInt;
+use mys_types::mys_serde::Readable;
+
+use crate::api::transactions::error::Error;
+use crate::context::Context;
+use crate::error::RpcError;
+use crate::error::invalid_params;
+use crate::paginate::Cursor as _;
+use crate::paginate::JsonCursor;
+use crate::paginate::Page;
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema, Default)]
+#[serde(
+    rename_all = "camelCase",
+    rename = "TransactionBlockResponseQuery",
+    default
+)]
+pub(crate) struct MysTransactionBlockResponseQuery {
+    /// If None, no filter will be applied.
+    pub filter: Option<TransactionFilter>,
+    /// Configures which fields to include in the response, by default only digest is included.
+    pub options: Option<MysTransactionBlockResponseOptions>,
+}
+
+#[serde_as]
+#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+pub(crate) enum TransactionFilter {
+    /// Query by checkpoint.
+    Checkpoint(
+        #[schemars(with = "BigInt<u64>")]
+        #[serde_as(as = "Readable<BigInt<u64>, _>")]
+        CheckpointSequenceNumber,
+    ),
+    /// Query by move function.
+    MoveFunction {
+        package: ObjectID,
+        module: Option<String>,
+        function: Option<String>,
     },
-    pg::Pg,
-    query_builder::{BoxedSelectStatement, FromClause, QueryFragment},
-    sql_types::BigInt,
-    AppearsOnTable, Column, Expression, ExpressionMethods, QueryDsl, QuerySource,
-};
-use mys_indexer_alt_schema::schema::{
-    tx_affected_addresses, tx_affected_objects, tx_calls, tx_digests,
-};
-use mys_json_rpc_types::{Page as PageResponse, TransactionFilter};
-use mys_types::{
-    base_types::{MysAddress, ObjectID},
-    digests::TransactionDigest,
-    messages_checkpoint::{CheckpointContents, CheckpointSummary},
-};
-
-use crate::{
-    data::{checkpoints::CheckpointKey, tx_digests::TxDigestKey},
-    error::{invalid_params, RpcError},
-    paginate::{Cursor as _, JsonCursor, Page},
-};
-
-use super::{error::Error, Context, TransactionsConfig};
+    /// Query for transactions that touch this object.
+    AffectedObject(ObjectID),
+    /// Query by sender address.
+    FromAddress(MysAddress),
+    /// Query by sender and recipient address.
+    FromAndToAddress { from: MysAddress, to: MysAddress },
+    /// Query transactions that have a given address as sender or recipient.
+    FromOrToAddress { addr: MysAddress },
+    /// Query by recipient address. On this RPC, this is an alias for `FromOrToAddress`.
+    ToAddress(MysAddress),
+}
 
 type Cursor = JsonCursor<u64>;
 type Digests = PageResponse<TransactionDigest, String>;
@@ -40,12 +97,12 @@ type Digests = PageResponse<TransactionDigest, String>;
 /// results).
 pub(super) async fn transactions(
     ctx: &Context,
-    config: &TransactionsConfig,
     filter: &Option<TransactionFilter>,
     cursor: Option<String>,
     limit: Option<usize>,
     descending_order: Option<bool>,
 ) -> Result<Digests, RpcError<Error>> {
+    let config = &ctx.config().transactions;
     let page: Page<Cursor> = Page::from_params(
         config.default_page_size,
         config.max_page_size,
@@ -76,21 +133,7 @@ pub(super) async fn transactions(
 
         Some(F::FromOrToAddress { addr }) => tx_affected_addresses(ctx, &page, None, *addr).await,
 
-        Some(F::TransactionKind(_) | F::TransactionKindIn(_)) => {
-            unsupported("TransactionKind filter is not supported")
-        }
-
-        Some(F::InputObject(_)) => {
-            unsupported("InputObject filter is not supported, please use AffectedObject instead.")
-        }
-
-        Some(F::ChangedObject(_)) => {
-            unsupported("ChangedObject filter is not supported, please use AffectedObject instead.")
-        }
-
-        Some(F::ToAddress(_)) => {
-            unsupported("ToAddress filter is not supported, please use FromOrToAddress instead.")
-        }
+        Some(F::ToAddress(addr)) => tx_affected_addresses(ctx, &page, None, *addr).await,
     }
 }
 
@@ -103,7 +146,7 @@ async fn all_transactions(ctx: &Context, page: &Page<Cursor>) -> Result<Digests,
         .into_boxed();
 
     let results: Vec<(i64, Vec<u8>)> = ctx
-        .reader()
+        .pg_reader()
         .connect()
         .await
         .context("Failed to connect to the database")?
@@ -120,20 +163,14 @@ async fn by_checkpoint(
     page: &Page<Cursor>,
     checkpoint: u64,
 ) -> Result<Digests, RpcError<Error>> {
-    let Some(checkpoint) = ctx
-        .loader()
-        .load_one(CheckpointKey(checkpoint))
+    let Some((summary, contents, _)) = ctx
+        .kv_loader()
+        .load_one_checkpoint(checkpoint)
         .await
         .context("Failed to load checkpoint")?
     else {
         return Ok(PageResponse::empty());
     };
-
-    let summary: CheckpointSummary = bcs::from_bytes(&checkpoint.checkpoint_summary)
-        .context("Failed to deserialize checkpoint summary")?;
-
-    let contents: CheckpointContents = bcs::from_bytes(&checkpoint.checkpoint_contents)
-        .context("Failed to deserialize checkpoint contents")?;
 
     // Transaction sequence number bounds from the checkpoint
     let cp_hi = summary.network_total_transactions;
@@ -166,7 +203,7 @@ async fn by_checkpoint(
         let ix = (tx - cp_lo) as usize;
         let digest = digests
             .get(ix)
-            .ok_or_else(|| anyhow!("Transaction out of bounds in checkpoint"))?
+            .context("Transaction out of bounds in checkpoint")?
             .transaction
             .inner()
             .to_vec();
@@ -213,7 +250,7 @@ async fn tx_calls(
     }
 
     let results: Vec<i64> = ctx
-        .reader()
+        .pg_reader()
         .connect()
         .await
         .context("Failed to connect to the database")?
@@ -239,7 +276,7 @@ async fn tx_affected_objects(
         .into_boxed();
 
     let results: Vec<i64> = ctx
-        .reader()
+        .pg_reader()
         .connect()
         .await
         .context("Failed to connect to the database")?
@@ -279,7 +316,7 @@ async fn tx_affected_addresses(
     }
 
     let results: Vec<i64> = ctx
-        .reader()
+        .pg_reader()
         .connect()
         .await
         .context("Failed to connect to the database")?
@@ -313,11 +350,11 @@ where
     TX: Copy + Send + Sync + 'q,
     TX: ValidGrouping<()> + QueryFragment<Pg>,
     TX: Column<Table = QS> + AppearsOnTable<QS>,
-    TX: ExpressionMethods + Expression<SqlType = BigInt>,
+    TX: ExpressionMethods + Expression<SqlType = SqlBigInt>,
     TX::IsAggregate: MixedAggregates<Never, Output = No>,
 {
-    query = query.filter(tx_sequence_number.ge(sql::<BigInt>(&format!(
-        r#"COALESCE(
+    query = query.filter(tx_sequence_number.ge(sql!(as SqlBigInt,
+        "COALESCE(
             (
                 SELECT
                     MAX(tx_lo)
@@ -328,11 +365,12 @@ where
                 ON
                     w.reader_lo = c.cp_sequence_number
                 WHERE
-                    w.pipeline IN ('{pipeline}', 'tx_digests')
+                    w.pipeline IN ({Text}, 'tx_digests')
             ),
             0
-        )"#
-    ))));
+        )",
+        pipeline,
+    )));
 
     if let Some(JsonCursor(tx)) = page.cursor {
         if page.descending {
@@ -369,17 +407,46 @@ async fn from_sequence_numbers(
         .transpose()
         .context("Failed to encode next cursor")?;
 
-    let digests = ctx
-        .loader()
-        .load_many(rows.iter().map(|&seq| TxDigestKey(seq as u64)))
-        .await
-        .context("Failed to load transaction digests")?;
+    // Get digests from the table and retry any of the digests that are not found.
+    let config = &ctx.config().transactions;
+    let max_retries = config.tx_retry_count;
+    let mut retry_interval =
+        tokio::time::interval(Duration::from_millis(config.tx_retry_interval_ms));
+    let mut keys: Vec<_> = rows.iter().map(|&seq| TxDigestKey(seq as u64)).collect();
+    let mut digests: HashMap<TxDigestKey, StoredTxDigest> = HashMap::new();
+    let mut retries = 0;
+    for _ in 0..=max_retries {
+        retry_interval.tick().await;
+
+        digests.extend(
+            ctx.pg_loader()
+                .load_many(keys.clone())
+                .await
+                .context("Failed to load transaction digests")?,
+        );
+
+        // Only retry the keys that are not found.
+        keys.retain(|key| !digests.contains_key(key));
+        if keys.is_empty() {
+            break;
+        }
+        retries += 1;
+        ctx.metrics()
+            .read_retries
+            .with_label_values(&["tx_digest"])
+            .inc();
+    }
+
+    ctx.metrics()
+        .read_retries_per_request
+        .with_label_values(&["tx_digest"])
+        .observe(retries as f64);
 
     let mut data = Vec::with_capacity(rows.len());
     for seq in rows {
         let bytes = digests
             .get(&TxDigestKey(seq as u64))
-            .ok_or_else(|| anyhow!("Missing transaction digest for transaction {seq}"))?
+            .with_context(|| format!("Missing transaction digest for transaction {seq}"))?
             .tx_digest
             .as_slice();
 
@@ -421,8 +488,4 @@ fn from_digests(limit: i64, mut rows: Vec<(i64, Vec<u8>)>) -> Result<Digests, Rp
         next_cursor,
         has_next_page,
     })
-}
-
-fn unsupported<T>(msg: &'static str) -> Result<T, RpcError<Error>> {
-    Err(invalid_params(Error::Unsupported(msg)))
 }

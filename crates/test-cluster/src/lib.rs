@@ -62,7 +62,6 @@ use tokio::time::{timeout, Instant};
 use tokio::{task::JoinHandle, time::sleep};
 use tracing::{error, info};
 
-mod test_indexer_handle;
 
 const NUM_VALIDATOR: usize = 4;
 
@@ -93,29 +92,19 @@ pub struct TestCluster {
     pub swarm: Swarm,
     pub wallet: WalletContext,
     pub fullnode_handle: FullNodeHandle,
-    indexer_handle: Option<test_indexer_handle::IndexerHandle>,
 }
 
 impl TestCluster {
     pub fn rpc_client(&self) -> &HttpClient {
-        self.indexer_handle
-            .as_ref()
-            .map(|h| &h.rpc_client)
-            .unwrap_or(&self.fullnode_handle.rpc_client)
+        &self.fullnode_handle.rpc_client
     }
 
     pub fn mys_client(&self) -> &MysClient {
-        self.indexer_handle
-            .as_ref()
-            .map(|h| &h.mys_client)
-            .unwrap_or(&self.fullnode_handle.mys_client)
+        &self.fullnode_handle.mys_client
     }
 
     pub fn rpc_url(&self) -> &str {
-        self.indexer_handle
-            .as_ref()
-            .map(|h| h.rpc_url.as_str())
-            .unwrap_or(&self.fullnode_handle.rpc_url)
+        &self.fullnode_handle.rpc_url
     }
 
     pub fn quorum_driver_api(&self) -> &QuorumDriverApi {
@@ -841,8 +830,6 @@ pub struct TestClusterBuilder {
     max_submit_position: Option<usize>,
     submit_delay_step_override_millis: Option<u64>,
     validator_state_accumulator_v2_enabled_config: StateAccumulatorV2EnabledConfig,
-
-    indexer_backed_rpc: bool,
 }
 
 impl TestClusterBuilder {
@@ -874,7 +861,6 @@ impl TestClusterBuilder {
             validator_state_accumulator_v2_enabled_config: StateAccumulatorV2EnabledConfig::Global(
                 true,
             ),
-            indexer_backed_rpc: false,
         }
     }
 
@@ -1079,11 +1065,6 @@ impl TestClusterBuilder {
         self
     }
 
-    pub fn with_indexer_backed_rpc(mut self) -> Self {
-        self.indexer_backed_rpc = true;
-        self
-    }
-
     pub async fn build(mut self) -> TestCluster {
         // All test clusters receive a continuous stream of random JWKs.
         // If we later use zklogin authenticated transactions in tests we will need to supply
@@ -1114,25 +1095,6 @@ impl TestClusterBuilder {
             }));
         }
 
-        let mut temp_data_ingestion_dir = None;
-        let mut data_ingestion_path = None;
-
-        if self.indexer_backed_rpc {
-            if self.data_ingestion_dir.is_none() {
-                temp_data_ingestion_dir = Some(tempfile::tempdir().unwrap());
-                self.data_ingestion_dir = Some(
-                    temp_data_ingestion_dir
-                        .as_ref()
-                        .unwrap()
-                        .path()
-                        .to_path_buf(),
-                );
-                assert!(self.data_ingestion_dir.is_some());
-            }
-            assert!(self.data_ingestion_dir.is_some());
-            data_ingestion_path = Some(self.data_ingestion_dir.as_ref().unwrap().to_path_buf());
-        }
-
         let swarm = self.start_swarm().await.unwrap();
         let working_dir = swarm.dir();
 
@@ -1141,17 +1103,7 @@ impl TestClusterBuilder {
         let fullnode_handle =
             FullNodeHandle::new(fullnode.get_node_handle().unwrap(), json_rpc_address).await;
 
-        let (rpc_url, indexer_handle) = if self.indexer_backed_rpc {
-            let handle = test_indexer_handle::IndexerHandle::new(
-                fullnode_handle.rpc_url.clone(),
-                temp_data_ingestion_dir,
-                data_ingestion_path.unwrap(),
-            )
-            .await;
-            (handle.rpc_url.clone(), Some(handle))
-        } else {
-            (fullnode_handle.rpc_url.clone(), None)
-        };
+        let rpc_url = fullnode_handle.rpc_url.clone();
 
         let mut wallet_conf: MysClientConfig =
             PersistedConfig::read(&working_dir.join(MYS_CLIENT_CONFIG)).unwrap();
@@ -1175,7 +1127,6 @@ impl TestClusterBuilder {
             swarm,
             wallet,
             fullnode_handle,
-            indexer_handle,
         }
     }
 

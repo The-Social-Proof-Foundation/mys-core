@@ -792,12 +792,12 @@ Owner:
     3:
       Immutable: UNIT
     4:
-      ConsensusV2:
+      ConsensusAddressOwner:
         STRUCT:
           - start_version:
               TYPENAME: SequenceNumber
-          - authenticator:
-              TYPENAME: Authenticator
+          - owner:
+              TYPENAME: MysAddress
 PackageUpgradeError:
   ENUM:
     0:

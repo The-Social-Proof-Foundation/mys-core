@@ -1,5 +1,6 @@
 use super::TryFromProtoError;
 use tap::Pipe;
+use mys_types::transaction::Argument as MysArgument;
 
 //
 // Transaction
@@ -163,6 +164,26 @@ impl TryFrom<&super::TransactionExpiration> for mys_sdk_types::TransactionExpira
         }
         .pipe(Ok)
     }
+}
+
+// Conversion from rpc.v2 TransactionExpiration to core TransactionExpiration
+pub fn try_from_proto_transaction_expiration(
+    value: &mys_rpc::proto::mys::rpc::v2::TransactionExpiration,
+) -> Result<mys_types::transaction::TransactionExpiration, String> {
+    // Convert via SDK types: proto → SDK → core
+    // Treat rpc.v2::TransactionExpiration as types::TransactionExpiration
+    let types_expiration = super::TransactionExpiration {
+        expiration: value.expiration.clone(),
+    };
+    let sdk_expiration: mys_sdk_types::TransactionExpiration = types_expiration
+        .try_into()
+        .map_err(|e| {
+            format!(
+                "failed to convert proto TransactionExpiration to SDK TransactionExpiration: {:?}",
+                e
+            )
+        })?;
+    Ok(sdk_expiration.into())
 }
 
 //
@@ -1017,6 +1038,25 @@ impl From<mys_sdk_types::Argument> for super::Argument {
     }
 }
 
+impl From<MysArgument> for super::Argument {
+    fn from(value: MysArgument) -> Self {
+        use super::argument::Kind;
+        use MysArgument::*;
+
+        let kind = match value {
+            GasCoin => Kind::Gas(()),
+            Input(input) => Kind::Input(input as u32),
+            Result(result) => Kind::Result(result as u32),
+            NestedResult(result, subresult) => Kind::NestedResult(super::NestedResult {
+                result: Some(result as u32),
+                subresult: Some(subresult as u32),
+            }),
+        };
+
+        Self { kind: Some(kind) }
+    }
+}
+
 impl TryFrom<&super::Argument> for mys_sdk_types::Argument {
     type Error = TryFromProtoError;
 
@@ -1370,5 +1410,25 @@ impl TryFrom<&super::Upgrade> for mys_sdk_types::Upgrade {
             package,
             ticket,
         })
+    }
+}
+
+//
+// TransactionChecks
+//
+
+pub fn from_proto_transaction_checks(
+    value: mys_rpc::proto::mys::rpc::v2::simulate_transaction_request::TransactionChecks,
+) -> mys_types::transaction_executor::TransactionChecks {
+    use mys_types::transaction_executor::TransactionChecks;
+    match value {
+        mys_rpc::proto::mys::rpc::v2::simulate_transaction_request::TransactionChecks::Enabled => {
+            TransactionChecks::Enabled
+        }
+        mys_rpc::proto::mys::rpc::v2::simulate_transaction_request::TransactionChecks::Disabled => {
+            TransactionChecks::Disabled
+        }
+        // Default to enabled
+        _ => TransactionChecks::Enabled,
     }
 }

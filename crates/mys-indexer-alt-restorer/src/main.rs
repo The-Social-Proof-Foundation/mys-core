@@ -6,8 +6,8 @@ use anyhow::Result;
 use clap::Parser;
 use tracing::info;
 
-use mys_indexer_alt_restorer::restore;
 use mys_indexer_alt_restorer::Args;
+use mys_indexer_alt_restorer::restore;
 
 #[tokio::main]
 async fn main() -> Result<()> {

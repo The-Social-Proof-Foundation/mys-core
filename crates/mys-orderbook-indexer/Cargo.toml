@@ -31,7 +31,6 @@ telemetry-subscribers = { path = "../telemetry-subscribers" }
 tracing = "0.1.37"
 backoff = { version = "0.4.0", features = ["futures", "futures-core", "pin-project-lite", "tokio", "tokio_1"] }
 mys-config = { path = "../mys-config" }
-mys-indexer-builder = { path = "../mys-indexer-builder" }
 mys-pg-db = { path = "../mys-pg-db" }
 tempfile = "3.3.0"
 axum.workspace = true

@@ -37,7 +37,10 @@ pub struct VerifyParams {
     pub zk_login_env: ZkLoginEnv,
     pub verify_legacy_zklogin_address: bool,
     pub accept_zklogin_in_multisig: bool,
+    pub accept_passkey_in_multisig: bool,
     pub zklogin_max_epoch_upper_bound_delta: Option<u64>,
+    pub additional_multisig_checks: bool,
+    pub validate_zklogin_public_identifier: bool,
 }
 
 impl VerifyParams {
@@ -47,7 +50,10 @@ impl VerifyParams {
         zk_login_env: ZkLoginEnv,
         verify_legacy_zklogin_address: bool,
         accept_zklogin_in_multisig: bool,
+        accept_passkey_in_multisig: bool,
         zklogin_max_epoch_upper_bound_delta: Option<u64>,
+        additional_multisig_checks: bool,
+        validate_zklogin_public_identifier: bool,
     ) -> Self {
         Self {
             oidc_provider_jwks,
@@ -55,7 +61,10 @@ impl VerifyParams {
             zk_login_env,
             verify_legacy_zklogin_address,
             accept_zklogin_in_multisig,
+            accept_passkey_in_multisig,
             zklogin_max_epoch_upper_bound_delta,
+            additional_multisig_checks,
+            validate_zklogin_public_identifier,
         }
     }
 }

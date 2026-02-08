@@ -128,8 +128,12 @@ async fn main() -> Result<()> {
             );
             let bigtable_client = BigTableClient::new_remote(
                 kv_config.instance_id.clone(),
+                None,
                 false,
                 Some(Duration::from_secs(kv_config.timeout_secs as u64)),
+                "mys-data-ingestion".to_string(),
+                None,
+                None,
             )
             .await?;
             bigtable_store = Some(BigTableProgressStore::new(bigtable_client));
@@ -172,8 +176,12 @@ async fn main() -> Result<()> {
             Task::BigTableKV(kv_config) => {
                 let client = BigTableClient::new_remote(
                     kv_config.instance_id,
+                    None,
                     false,
                     Some(Duration::from_secs(kv_config.timeout_secs as u64)),
+                    "mys-data-ingestion".to_string(),
+                    None,
+                    None,
                 )
                 .await?;
                 let worker_pool = WorkerPool::new(

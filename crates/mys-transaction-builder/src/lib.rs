@@ -31,7 +31,7 @@ use mys_types::mys_system_state::MYS_SYSTEM_MODULE_NAME;
 use mys_types::object::{Object, Owner};
 use mys_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use mys_types::transaction::{
-    Argument, CallArg, Command, InputObjectKind, ObjectArg, TransactionData, TransactionKind,
+    Argument, CallArg, Command, InputObjectKind, ObjectArg, SharedObjectMutability, TransactionData, TransactionKind,
 };
 use mys_types::{coin, fp_ensure, MYS_FRAMEWORK_PACKAGE_ID, MYS_SYSTEM_PACKAGE_ID};
 
@@ -482,13 +482,17 @@ impl TransactionBuilder {
             Owner::Shared {
                 initial_shared_version,
             }
-            | Owner::ConsensusV2 {
+            | Owner::ConsensusAddressOwner {
                 start_version: initial_shared_version,
-                authenticator: _,
+                owner: _,
             } => ObjectArg::SharedObject {
                 id,
                 initial_shared_version,
-                mutable: is_mutable_ref,
+                mutability: if is_mutable_ref {
+                    SharedObjectMutability::Mutable
+                } else {
+                    SharedObjectMutability::Immutable
+                },
             },
             Owner::AddressOwner(_) | Owner::ObjectOwner(_) | Owner::Immutable => {
                 ObjectArg::ImmOrOwnedObject(obj_ref)
@@ -661,13 +665,13 @@ impl TransactionBuilder {
                 Owner::Shared {
                     initial_shared_version,
                 }
-                | Owner::ConsensusV2 {
+                | Owner::ConsensusAddressOwner {
                     start_version: initial_shared_version,
-                    authenticator: _,
+                    owner: _,
                 } => ObjectArg::SharedObject {
                     id: upgrade_capability.object_ref().0,
                     initial_shared_version,
-                    mutable: true,
+                    mutability: SharedObjectMutability::Mutable,
                 },
                 Owner::Immutable => {
                     bail!("Upgrade capability is stored immutably and cannot be used for upgrades")

@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-//# init --protocol-version 70 --accounts A B --simulator
+//# init --protocol-version 108 --accounts A B --simulator
 
 // 1. All objects owned by A
 // 2. ...owned by B
@@ -49,7 +49,7 @@
   "params": ["@{A}", { "options": { "showContent": true } }, null, 2]
 }
 
-//# run-jsonrpc --cursors @{obj_4_1,2}
+//# run-jsonrpc --cursors bcs(bcs(@{obj_4_1}),2)
 {
   "method": "mysx_getOwnedObjects",
   "params": ["@{A}", { "options": { "showContent": true } }, "@{cursor_0}", 2]

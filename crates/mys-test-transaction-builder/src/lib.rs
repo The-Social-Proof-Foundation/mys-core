@@ -106,7 +106,7 @@ impl TestTransactionBuilder {
             vec![CallArg::Object(ObjectArg::SharedObject {
                 id: counter_id,
                 initial_shared_version: counter_initial_shared_version,
-                mutable: true,
+                mutability: mys_types::transaction::SharedObjectMutability::Mutable,
             })],
         )
     }
@@ -124,7 +124,7 @@ impl TestTransactionBuilder {
             vec![CallArg::Object(ObjectArg::SharedObject {
                 id: counter_id,
                 initial_shared_version: counter_initial_shared_version,
-                mutable: false,
+                mutability: mys_types::transaction::SharedObjectMutability::Immutable,
             })],
         )
     }
@@ -142,7 +142,7 @@ impl TestTransactionBuilder {
             vec![CallArg::Object(ObjectArg::SharedObject {
                 id: counter_id,
                 initial_shared_version: counter_initial_shared_version,
-                mutable: true,
+                mutability: mys_types::transaction::SharedObjectMutability::Mutable,
             })],
         )
     }
@@ -197,7 +197,7 @@ impl TestTransactionBuilder {
             vec![CallArg::Object(ObjectArg::SharedObject {
                 id: MYS_RANDOMNESS_STATE_OBJECT_ID,
                 initial_shared_version: randomness_initial_shared_version,
-                mutable: false,
+                mutability: mys_types::transaction::SharedObjectMutability::Immutable,
             })],
         )
     }
@@ -659,7 +659,7 @@ pub async fn emit_new_random_u128(
     let random_call_arg = CallArg::Object(ObjectArg::SharedObject {
         id: MYS_RANDOMNESS_STATE_OBJECT_ID,
         initial_shared_version,
-        mutable: false,
+        mutability: mys_types::transaction::SharedObjectMutability::Immutable,
     });
 
     let txn = context.sign_transaction(

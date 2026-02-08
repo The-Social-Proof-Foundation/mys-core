@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-//# init --protocol-version 70 --simulator --accounts A
+//# init --protocol-version 108 --simulator --accounts A
 
 //# run-jsonrpc
 {

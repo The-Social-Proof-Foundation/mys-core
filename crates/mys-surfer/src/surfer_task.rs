@@ -71,8 +71,8 @@ impl SurferTask {
                             Owner::Shared {
                                 initial_shared_version,
                             }
-                            // TODO: Implement full support for ConsensusV2 objects in mys-surfer.
-                            | Owner::ConsensusV2 {
+                            // TODO: Implement full support for ConsensusAddressOwner objects in mys-surfer.
+                            | Owner::ConsensusAddressOwner {
                                 start_version: initial_shared_version,
                                 ..
                             } => {

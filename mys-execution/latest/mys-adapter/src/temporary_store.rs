@@ -4,7 +4,7 @@
 
 use crate::gas_charger::GasCharger;
 use move_core_types::account_address::AccountAddress;
-use move_core_types::language_storage::StructTag;
+use move_core_types::language_storage::{StructTag, TypeTag};
 use move_core_types::resolver::ResourceResolver;
 use mys_protocol_config::ProtocolConfig;
 use mys_types::base_types::VersionDigest;
@@ -545,7 +545,7 @@ impl<'backing> TemporaryStore<'backing> {
                         assert!(sender == a, "Input object must be owned by sender");
                         Some(id)
                     }
-                    Owner::Shared { .. } | Owner::ConsensusV2 { .. } => Some(id),
+                    Owner::Shared { .. } | Owner::ConsensusAddressOwner { .. } => Some(id),
                     Owner::Immutable => {
                         // object is authenticated, but it cannot own other objects,
                         // so we should not add it to `authenticated_objs`
@@ -611,7 +611,7 @@ impl<'backing> TemporaryStore<'backing> {
                         // it would already have been in authenticated_for_mutation
                         ObjectID::from(*parent)
                     }
-                    owner @ Owner::Shared { .. } | owner @ Owner::ConsensusV2 { .. } => panic!(
+                    owner @ Owner::Shared { .. } | owner @ Owner::ConsensusAddressOwner { .. } => panic!(
                         "Unauthenticated root at {to_authenticate:?} with owner {owner:?}\n\
                         Potentially covering objects in: {authenticated_for_mutation:#?}",
                     ),
@@ -975,8 +975,6 @@ impl<'backing> ChildObjectResolver for TemporaryStore<'backing> {
         receiving_object_id: &ObjectID,
         receive_object_at_version: SequenceNumber,
         epoch_id: EpochId,
-        // TODO: Delete this parameter once table migration is complete.
-        use_object_per_epoch_marker_table_v2: bool,
     ) -> MysResult<Option<Object>> {
         // You should never be able to try and receive an object after deleting it or writing it in the same
         // transaction since `Receiving` doesn't have copy.
@@ -993,7 +991,6 @@ impl<'backing> ChildObjectResolver for TemporaryStore<'backing> {
             receiving_object_id,
             receive_object_at_version,
             epoch_id,
-            use_object_per_epoch_marker_table_v2,
         )
     }
 }
@@ -1008,13 +1005,14 @@ impl<'backing> Storage for TemporaryStore<'backing> {
     }
 
     /// Take execution results v2, and translate it back to be compatible with effects v1.
-    fn record_execution_results(&mut self, results: ExecutionResults) {
+    fn record_execution_results(&mut self, results: ExecutionResults) -> Result<(), ExecutionError> {
         let ExecutionResults::V2(results) = results else {
             panic!("ExecutionResults::V2 expected in mys-execution v1 and above");
         };
         // It's important to merge instead of override results because it's
         // possible to execute PT more than once during tx execution.
         self.execution_results.merge_results(results);
+        Ok(())
     }
 
     fn save_loaded_runtime_objects(
@@ -1031,9 +1029,32 @@ impl<'backing> Storage for TemporaryStore<'backing> {
         TemporaryStore::save_wrapped_object_containers(self, wrapped_object_containers)
     }
 
-    fn check_coin_deny_list(&self, written_objects: &BTreeMap<ObjectID, Object>) -> DenyListResult {
+    fn check_coin_deny_list(
+        &self,
+        receiving_funds_type_and_owners: BTreeMap<TypeTag, BTreeSet<MysAddress>>,
+    ) -> DenyListResult {
+        // Build written_objects map from the type and owners provided
+        // We need to find matching objects in execution_results.written_objects
+        let mut written_objects_for_check = BTreeMap::new();
+        for (type_tag, owners) in &receiving_funds_type_and_owners {
+            for (id, obj) in &self.execution_results.written_objects {
+                if obj.is_gas_coin() {
+                    continue;
+                }
+                if let Some(coin_type) = obj.coin_type_maybe() {
+                    if coin_type == *type_tag {
+                        if let Ok(owner) = obj.owner.get_address_owner_address() {
+                            if owners.contains(&owner) {
+                                written_objects_for_check.insert(*id, obj.clone());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
         let result = check_coin_deny_list_v2_during_execution(
-            written_objects,
+            &written_objects_for_check,
             self.cur_epoch,
             self.store.as_object_store(),
         );
@@ -1047,6 +1068,10 @@ impl<'backing> Storage for TemporaryStore<'backing> {
                 .insert(MYS_DENY_LIST_OBJECT_ID);
         }
         result
+    }
+
+    fn record_generated_object_ids(&mut self, _generated_ids: BTreeSet<ObjectID>) {
+        // Not used in latest
     }
 }
 

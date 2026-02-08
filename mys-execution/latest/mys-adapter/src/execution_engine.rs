@@ -67,7 +67,7 @@ mod checked {
     use mys_types::transaction::{
         Argument, AuthenticatorStateExpire, AuthenticatorStateUpdate, CallArg, ChangeEpoch,
         Command, EndOfEpochTransactionKind, GenesisTransaction, ObjectArg, ProgrammableTransaction,
-        TransactionKind,
+        SharedObjectMutability, TransactionKind,
     };
     use mys_types::transaction::{CheckedInputObjects, RandomnessStateUpdate};
     use mys_types::{
@@ -1169,7 +1169,7 @@ mod checked {
             .obj(ObjectArg::SharedObject {
                 id: MYS_BRIDGE_OBJECT_ID,
                 initial_shared_version: bridge_shared_version,
-                mutable: true,
+                mutability: SharedObjectMutability::Mutable,
             })
             .expect("Unable to create Bridge object arg!");
         let system_state = builder
@@ -1223,7 +1223,7 @@ mod checked {
                     CallArg::Object(ObjectArg::SharedObject {
                         id: MYS_AUTHENTICATOR_STATE_OBJECT_ID,
                         initial_shared_version: update.authenticator_obj_initial_shared_version,
-                        mutable: true,
+                        mutability: SharedObjectMutability::Mutable,
                     }),
                     CallArg::Pure(bcs::to_bytes(&update.new_active_jwks).unwrap()),
                 ],
@@ -1262,7 +1262,7 @@ mod checked {
                     CallArg::Object(ObjectArg::SharedObject {
                         id: MYS_AUTHENTICATOR_STATE_OBJECT_ID,
                         initial_shared_version: expire.authenticator_obj_initial_shared_version,
-                        mutable: true,
+                        mutability: SharedObjectMutability::Mutable,
                     }),
                     CallArg::Pure(bcs::to_bytes(&expire.min_epoch).unwrap()),
                 ],
@@ -1292,7 +1292,7 @@ mod checked {
                     CallArg::Object(ObjectArg::SharedObject {
                         id: MYS_RANDOMNESS_STATE_OBJECT_ID,
                         initial_shared_version: update.randomness_obj_initial_shared_version,
-                        mutable: true,
+                        mutability: SharedObjectMutability::Mutable,
                     }),
                     CallArg::Pure(bcs::to_bytes(&update.randomness_round).unwrap()),
                     CallArg::Pure(bcs::to_bytes(&update.random_bytes).unwrap()),

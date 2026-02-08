@@ -2,6 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::accumulator_event::AccumulatorEvent;
 use crate::base_types::{ObjectID, SequenceNumber};
 use crate::digests::{ObjectDigest, TransactionEventsDigest};
 use crate::effects::{EffectsObjectChange, IDOperation, ObjectIn, ObjectOut, TransactionEffects};
@@ -10,9 +11,12 @@ use crate::execution_status::ExecutionStatus;
 use crate::gas::GasCostSummary;
 use crate::message_envelope::Message;
 use crate::object::Owner;
-use crate::transaction::{InputObjectKind, SenderSignedData, TransactionDataAPI};
+use crate::transaction::{
+    InputObjectKind, SenderSignedData, SharedObjectMutability, TransactionDataAPI,
+};
 use std::collections::{BTreeMap, BTreeSet};
 
+#[derive(Clone)]
 pub struct TestEffectsBuilder {
     transaction: SenderSignedData,
     /// Override the execution status if provided.
@@ -29,6 +33,10 @@ pub struct TestEffectsBuilder {
     wrapped_objects: Vec<(ObjectID, SequenceNumber)>,
     /// Objects that are unwrapped: (ID, new owner).
     unwrapped_objects: Vec<(ObjectID, Owner)>,
+    /// Immutable objects that are read.
+    frozen_objects: BTreeSet<ObjectID>,
+    /// Accumulator events.
+    accumulator_events: Vec<AccumulatorEvent>,
 }
 
 impl TestEffectsBuilder {
@@ -43,6 +51,8 @@ impl TestEffectsBuilder {
             deleted_objects: vec![],
             wrapped_objects: vec![],
             unwrapped_objects: vec![],
+            frozen_objects: BTreeSet::new(),
+            accumulator_events: vec![],
         }
     }
 
@@ -106,9 +116,22 @@ impl TestEffectsBuilder {
         self
     }
 
+    pub fn with_frozen_objects(mut self, objects: impl IntoIterator<Item = ObjectID>) -> Self {
+        self.frozen_objects.extend(objects);
+        self
+    }
+
+    pub fn with_accumulator_events(
+        mut self,
+        events: impl IntoIterator<Item = AccumulatorEvent>,
+    ) -> Self {
+        self.accumulator_events.extend(events);
+        self
+    }
+
     pub fn build(self) -> TransactionEffects {
         let lamport_version = self.get_lamport_version();
-        let status = self.status.unwrap_or_else(|| ExecutionStatus::Success);
+        let status = self.status.unwrap_or(ExecutionStatus::Success);
         // TODO: This does not yet support deleted shared objects.
         let shared_objects = self
             .shared_input_versions
@@ -125,6 +148,11 @@ impl TestEffectsBuilder {
             .unwrap()
             .iter()
             .filter_map(|kind| match kind {
+                InputObjectKind::ImmOrOwnedMoveObject((id, _, _))
+                    if self.frozen_objects.contains(id) =>
+                {
+                    None
+                }
                 InputObjectKind::ImmOrOwnedMoveObject(oref) => Some((
                     oref.0,
                     EffectsObjectChange {
@@ -144,32 +172,39 @@ impl TestEffectsBuilder {
                 InputObjectKind::SharedMoveObject {
                     id,
                     initial_shared_version,
-                    mutable,
-                } => mutable.then_some((
-                    *id,
-                    EffectsObjectChange {
-                        input_state: ObjectIn::Exist((
-                            (
-                                *self
-                                    .shared_input_versions
-                                    .get(id)
-                                    .unwrap_or(initial_shared_version),
-                                ObjectDigest::MIN,
-                            ),
-                            Owner::Shared {
-                                initial_shared_version: *initial_shared_version,
-                            },
-                        )),
-                        output_state: ObjectOut::ObjectWrite((
-                            // Digest must change with a mutation.
-                            ObjectDigest::MAX,
-                            Owner::Shared {
-                                initial_shared_version: *initial_shared_version,
-                            },
-                        )),
-                        id_operation: IDOperation::None,
-                    },
-                )),
+                    mutability,
+                } => {
+                    let mutable = match mutability {
+                        SharedObjectMutability::Mutable => true,
+                        SharedObjectMutability::Immutable => false,
+                        SharedObjectMutability::NonExclusiveWrite => todo!(),
+                    };
+                    mutable.then_some((
+                        *id,
+                        EffectsObjectChange {
+                            input_state: ObjectIn::Exist((
+                                (
+                                    *self
+                                        .shared_input_versions
+                                        .get(id)
+                                        .unwrap_or(initial_shared_version),
+                                    ObjectDigest::MIN,
+                                ),
+                                Owner::Shared {
+                                    initial_shared_version: *initial_shared_version,
+                                },
+                            )),
+                            output_state: ObjectOut::ObjectWrite((
+                                // Digest must change with a mutation.
+                                ObjectDigest::MAX,
+                                Owner::Shared {
+                                    initial_shared_version: *initial_shared_version,
+                                },
+                            )),
+                            id_operation: IDOperation::None,
+                        },
+                    ))
+                }
             })
             .chain(self.created_objects.into_iter().map(|(id, owner)| {
                 (
@@ -233,6 +268,16 @@ impl TestEffectsBuilder {
                     EffectsObjectChange {
                         input_state: ObjectIn::NotExist,
                         output_state: ObjectOut::ObjectWrite((ObjectDigest::random(), owner)),
+                        id_operation: IDOperation::None,
+                    },
+                )
+            }))
+            .chain(self.accumulator_events.into_iter().map(|event| {
+                (
+                    *event.accumulator_obj.inner(),
+                    EffectsObjectChange {
+                        input_state: ObjectIn::NotExist,
+                        output_state: ObjectOut::AccumulatorWriteV1(event.write),
                         id_operation: IDOperation::None,
                     },
                 )

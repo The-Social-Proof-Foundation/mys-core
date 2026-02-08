@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use move_binary_format::file_format::AbilitySet;
+use move_core_types::u256::U256;
 use move_core_types::{identifier::IdentStr, resolver::ResourceResolver};
 use move_vm_types::loaded_data::runtime_types::Type;
 use mys_types::{
@@ -10,6 +11,7 @@ use mys_types::{
     coin::Coin,
     error::{ExecutionError, ExecutionErrorKind, MysError},
     execution_status::CommandArgumentError,
+    funds_accumulator::Withdrawal,
     object::Owner,
     storage::{BackingPackageStore, ChildObjectResolver, StorageView},
     transfer::Receiving,
@@ -171,6 +173,17 @@ impl InputValue {
         InputValue {
             object_metadata: Some(InputObjectMetadata::Receiving { id, version }),
             inner: ResultValue::new(Value::Receiving(id, version, None)),
+        }
+    }
+
+    pub fn withdrawal(withdrawal_ty: RawValueType, owner: MysAddress, limit: U256) -> Self {
+        let value = Value::Raw(
+            withdrawal_ty,
+            bcs::to_bytes(&Withdrawal::new(owner, limit)).unwrap(),
+        );
+        InputValue {
+            object_metadata: None,
+            inner: ResultValue::new(value),
         }
     }
 }

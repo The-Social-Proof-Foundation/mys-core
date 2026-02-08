@@ -5,9 +5,11 @@
 use anyhow::Result;
 use object_store::aws::AmazonS3ConfigKey;
 use object_store::gcp::GoogleConfigKey;
-use object_store::{ClientOptions, ObjectStore, RetryConfig};
+use object_store::path::Path;
+use object_store::{ClientOptions, ObjectStore, ObjectStoreExt, RetryConfig};
 use std::str::FromStr;
 use std::time::Duration;
+use mys_types::messages_checkpoint::CheckpointSequenceNumber;
 use url::Url;
 
 pub fn create_remote_store_client(
@@ -51,4 +53,14 @@ pub fn create_remote_store_client(
         }
         Ok(Box::new(builder.build()?))
     }
+}
+
+pub async fn end_of_epoch_data(
+    url: String,
+    remote_store_options: Vec<(String, String)>,
+    timeout_secs: u64,
+) -> Result<Vec<CheckpointSequenceNumber>> {
+    let client = create_remote_store_client(url, remote_store_options, timeout_secs)?;
+    let response = client.get(&Path::from("epochs.json")).await?;
+    Ok(serde_json::from_slice(response.bytes().await?.as_ref())?)
 }

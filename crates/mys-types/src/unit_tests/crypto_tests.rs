@@ -12,7 +12,7 @@ fn serde_keypair() {
     let encoded = skp.encode().unwrap();
     assert_eq!(
         encoded,
-        "mysprivkey1qzdlfxn2qa2lj5uprl8pyhexs02sg2wrhdy7qaq50cqgnffw4c2477kg9h3"
+        "suiprivkey1qzdlfxn2qa2lj5uprl8pyhexs02sg2wrhdy7qaq50cqgnffw4c2477kg9h3"
     );
     let decoded = MysKeyPair::decode(&encoded).unwrap();
     assert_eq!(skp, decoded);

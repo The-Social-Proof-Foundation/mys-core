@@ -116,3 +116,4 @@ tasks/
 
 # Docker build artifacts
 docker-build/
+/myso-core

@@ -11,7 +11,7 @@ use crate::{
 ///
 /// - Selectors, which recurse into the sub-structure.
 /// - Filters, which check properties of the value at that position in the sub-structure.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Element<'e> {
     // Selectors
     /// Select a named field, assuming the value in question is a struct or an enum variant.
@@ -73,6 +73,7 @@ where
     ) -> anyhow::Result<Option<V::Value>> {
         let mut extractor = Extractor::new(inner, &path);
         A::MoveValue::visit_deserialize(bytes, layout, &mut extractor)
+            .map_err(|e| anyhow::Error::from(e))
     }
 
     pub fn deserialize_struct(
@@ -83,6 +84,7 @@ where
     ) -> anyhow::Result<Option<V::Value>> {
         let mut extractor = Extractor::new(inner, &path);
         A::MoveStruct::visit_deserialize(bytes, layout, &mut extractor)
+            .map_err(|e| anyhow::Error::from(e))
     }
 }
 

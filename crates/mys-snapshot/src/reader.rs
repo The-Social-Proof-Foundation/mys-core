@@ -18,7 +18,7 @@ use integer_encoding::VarIntReader;
 use mys_config::object_storage_config::ObjectStoreConfig;
 use mys_core::authority::authority_store_tables::{AuthorityPerpetualTables, LiveObject};
 use mys_core::authority::AuthorityStore;
-use mys_indexer_alt_framework::task::TrySpawnStreamExt;
+use mys_futures::stream::TrySpawnStreamExt;
 use mys_storage::blob::{Blob, BlobEncoding};
 use mys_storage::object_store::http::HttpDownloaderBuilder;
 use mys_storage::object_store::util::{copy_file, copy_files, path_to_filesystem};
@@ -239,14 +239,14 @@ impl StateSnapshotReaderV1 {
         );
 
         let ref_files_iter = self.ref_files.clone().into_iter();
-        futures::stream::iter(ref_files_iter)
+        let items: Vec<_> = ref_files_iter
             .flat_map(|(bucket, part_files)| {
-                futures::stream::iter(
-                    part_files
-                        .into_iter()
-                        .map(move |(part, part_file)| (bucket, part, part_file)),
-                )
+                part_files
+                    .into_iter()
+                    .map(move |(part, part_file)| (bucket, part, part_file))
             })
+            .collect();
+        futures::stream::iter(items)
             .try_for_each_spawned(self.concurrency, |(bucket, part, _part_file)| {
                 let sha3_digests = sha3_digests.clone();
                 let object_files = self.object_files.clone();

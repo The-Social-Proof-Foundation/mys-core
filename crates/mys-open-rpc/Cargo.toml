@@ -22,7 +22,6 @@ clap.workspace = true
 pretty_assertions.workspace = true
 tokio = { workspace = true, features = ["full"] }
 fastcrypto.workspace = true
-mys-json-rpc.workspace = true
 mys-json-rpc-api.workspace = true
 mys-json-rpc-types.workspace = true
 mys-json.workspace = true

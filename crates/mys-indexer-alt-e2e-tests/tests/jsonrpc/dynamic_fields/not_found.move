@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-//# init --protocol-version 70 --accounts A --simulator
+//# init --protocol-version 108 --accounts A --simulator
 
 // 1. Parent ID does not exist
 // 2. Parent ID exists, but the field does not

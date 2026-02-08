@@ -4,11 +4,14 @@ version.workspace = true
 authors = ["Mysten Labs <build@mystenlabs.com>"]
 license = "Apache-2.0"
 publish = false
-edition = "2021"
+edition = "2024"
 
 [[bin]]
 name = "mys-indexer-alt-jsonrpc"
 path = "src/main.rs"
+
+[lints]
+workspace = true
 
 [dependencies]
 anyhow.workspace = true
@@ -16,14 +19,19 @@ async-graphql = { workspace = true, features = ["dataloader"] }
 async-trait.workspace = true
 axum.workspace = true
 bcs.workspace = true
+bin-version.workspace = true
 clap.workspace = true
+const-str.workspace = true
 diesel = { workspace = true, features = ["chrono"] }
 diesel-async = { workspace = true, features = ["bb8", "postgres", "async-connection-wrapper"] }
 fastcrypto.workspace = true
 futures.workspace = true
+http.workspace = true
 jsonrpsee = { workspace = true, features = ["macros", "server"] }
 pin-project-lite.workspace = true
+pin-project.workspace = true
 prometheus.workspace = true
+rustls.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -31,25 +39,36 @@ serde_with.workspace = true
 telemetry-subscribers.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
-tokio-util.workspace = true
 toml.workspace = true
 tower-layer.workspace = true
+# tower.workspace = true
+tower = { version = "0.4", features = ["util"] }
+tower-http.workspace = true
 tracing.workspace = true
 url.workspace = true
 
+move-binary-format.workspace = true
 move-core-types.workspace = true
 
 mys-default-config.workspace = true
+mys-display.workspace = true
+mys-futures.workspace = true
 mys-indexer-alt-metrics.workspace = true
+mys-indexer-alt-reader.workspace = true
 mys-indexer-alt-schema.workspace = true
 mys-json.workspace = true
+mys-json-rpc-api.workspace = true
 mys-json-rpc-types.workspace = true
-mys-package-resolver.workspace = true
+mys-name-service.workspace = true
 mys-open-rpc.workspace = true
 mys-open-rpc-macros.workspace = true
-mys-pg-db.workspace = true
+mys-package-resolver.workspace = true
+mys-protocol-config.workspace = true
+mys-sql-macro.workspace = true
 mys-types.workspace = true
 
 [dev-dependencies]
 reqwest.workspace = true
 serde_json.workspace = true
+
+mys-pg-db.workspace = true

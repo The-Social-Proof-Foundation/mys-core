@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use futures::stream::BoxStream;
 use object_store::path::Path;
-use object_store::{DynObjectStore, ObjectMeta};
+use object_store::{DynObjectStore, ObjectMeta, ObjectStoreExt};
 use std::sync::Arc;
 
 pub mod http;

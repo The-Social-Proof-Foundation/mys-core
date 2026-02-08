@@ -9,7 +9,7 @@ use crate::{
     error::ExecutionError,
     object::{Data, Object},
 };
-use crate::{base_types::ObjectID, id::UID, MYS_FRAMEWORK_ADDRESS};
+use crate::{base_types::ObjectID, id::{ID, UID}, MYS_FRAMEWORK_ADDRESS};
 use move_core_types::{
     annotated_value::{MoveFieldLayout, MoveStructLayout, MoveTypeLayout},
     ident_str,
@@ -23,6 +23,7 @@ pub const COIN_MODULE_NAME: &IdentStr = ident_str!("coin");
 pub const COIN_STRUCT_NAME: &IdentStr = ident_str!("Coin");
 pub const COIN_METADATA_STRUCT_NAME: &IdentStr = ident_str!("CoinMetadata");
 pub const COIN_TREASURE_CAP_NAME: &IdentStr = ident_str!("TreasuryCap");
+pub const REGULATED_COIN_METADATA_STRUCT_NAME: &IdentStr = ident_str!("RegulatedCoinMetadata");
 
 pub const PAY_MODULE_NAME: &IdentStr = ident_str!("pay");
 pub const PAY_JOIN_FUNC_NAME: &IdentStr = ident_str!("join");
@@ -264,6 +265,81 @@ impl TryFrom<&Object> for CoinMetadata {
 
         Err(MysError::TypeError {
             error: format!("Object type is not a CoinMetadata: {:?}", object),
+        })
+    }
+}
+
+// Rust version of the Move mys::coin::RegulatedCoinMetadata type
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+pub struct RegulatedCoinMetadata {
+    pub id: UID,
+    /// The ID of the coin's CoinMetadata object.
+    pub coin_metadata_object: ID,
+    /// The ID of the coin's DenyCap object.
+    pub deny_cap_object: ID,
+}
+
+impl RegulatedCoinMetadata {
+    /// Is this other StructTag representing a CoinMetadata?
+    pub fn is_regulated_coin_metadata(other: &StructTag) -> bool {
+        other.address == MYS_FRAMEWORK_ADDRESS
+            && other.module.as_ident_str() == COIN_MODULE_NAME
+            && other.name.as_ident_str() == REGULATED_COIN_METADATA_STRUCT_NAME
+    }
+
+    /// Create a coin from BCS bytes
+    pub fn from_bcs_bytes(content: &[u8]) -> Result<Self, MysError> {
+        bcs::from_bytes(content).map_err(|err| MysError::ObjectDeserializationError {
+            error: format!(
+                "Unable to deserialize RegulatedCoinMetadata object: {}",
+                err
+            ),
+        })
+    }
+
+    pub fn type_(type_param: StructTag) -> StructTag {
+        StructTag {
+            address: MYS_FRAMEWORK_ADDRESS,
+            module: COIN_MODULE_NAME.to_owned(),
+            name: REGULATED_COIN_METADATA_STRUCT_NAME.to_owned(),
+            type_params: vec![TypeTag::Struct(Box::new(type_param))],
+        }
+    }
+
+    /// Checks if the provided type is `CoinMetadata<T>`, returning the type T if so.
+    pub fn is_regulated_coin_metadata_with_coin_type(other: &StructTag) -> Option<&StructTag> {
+        if Self::is_regulated_coin_metadata(other) && other.type_params.len() == 1 {
+            match other.type_params.first() {
+                Some(TypeTag::Struct(coin_type)) => Some(coin_type),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+}
+
+impl TryFrom<Object> for RegulatedCoinMetadata {
+    type Error = MysError;
+    fn try_from(object: Object) -> Result<Self, Self::Error> {
+        TryFrom::try_from(&object)
+    }
+}
+
+impl TryFrom<&Object> for RegulatedCoinMetadata {
+    type Error = MysError;
+    fn try_from(object: &Object) -> Result<Self, Self::Error> {
+        match &object.data {
+            Data::Move(o) => {
+                if o.type_().is_regulated_coin_metadata() {
+                    return RegulatedCoinMetadata::from_bcs_bytes(o.contents());
+                }
+            }
+            Data::Package(_) => {}
+        }
+
+        Err(MysError::TypeError {
+            error: format!("Object type is not a RegulatedCoinMetadata: {:?}", object),
         })
     }
 }

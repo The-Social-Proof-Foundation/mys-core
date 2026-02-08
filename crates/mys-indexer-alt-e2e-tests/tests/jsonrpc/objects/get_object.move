@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-//# init --protocol-version 70 --accounts A --addresses test=0x0 --simulator
+//# init --protocol-version 108 --accounts A --addresses P=0x0 --simulator
 
 // 1. Fetching a freshly created object
 // 2. ...the same object after it has been modified
@@ -10,6 +10,8 @@
 // 4. ...after it has been unwrapped
 // 5. ...after it has been deleted
 // 6. Fetching an object that just doesn't exist
+// 7. Fetching a newly created package
+// 8. Fetching an upgraded package
 
 //# programmable --sender A --inputs @A
 //> 0: mys::table::new<u64, mys::coin::Coin<mys::mys::MYS>>();
@@ -77,4 +79,28 @@
 {
   "method": "mys_getObject",
   "params": ["0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"]
+}
+
+//# publish --sender A --upgradeable
+module P::M {
+  public fun foo(): u64 { 42 }
+}
+
+//# upgrade --sender A --package P --upgrade-capability 18,1
+module P::M {
+  public fun foo(): u64 { 43 }
+}
+
+//# create-checkpoint
+
+//# run-jsonrpc
+{
+  "method": "mys_getObject",
+  "params": ["@{obj_18_0}", { "showType": true }]
+}
+
+//# run-jsonrpc
+{
+  "method": "mys_getObject",
+  "params": ["@{obj_19_0}", { "showType": true }]
 }

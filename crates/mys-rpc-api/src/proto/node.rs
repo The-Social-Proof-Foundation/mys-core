@@ -49,6 +49,16 @@ use v2::*;
 // BalanceChange
 //
 
+impl From<mys_types::balance_change::BalanceChange> for BalanceChange {
+    fn from(value: mys_types::balance_change::BalanceChange) -> Self {
+        Self {
+            address: Some(value.address.to_string()),
+            coin_type: Some(value.coin_type.to_canonical_string(true)),
+            amount: Some(value.amount.to_string()),
+        }
+    }
+}
+
 impl From<mys_sdk_types::BalanceChange> for BalanceChange {
     fn from(value: mys_sdk_types::BalanceChange) -> Self {
         Self {

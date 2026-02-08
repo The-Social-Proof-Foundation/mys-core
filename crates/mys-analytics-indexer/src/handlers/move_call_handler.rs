@@ -38,12 +38,14 @@ impl Worker for MoveCallHandler {
                 .transaction
                 .transaction_data()
                 .move_calls();
+            // Convert from Vec<(usize, &ObjectID, &str, &str)> to Vec<(&ObjectID, &str, &str)>
+            let move_calls_trimmed: Vec<_> = move_calls.iter().map(|(_, package, module, function)| (*package, *module, *function)).collect();
             self.process_move_calls(
                 checkpoint_summary.epoch,
                 checkpoint_summary.sequence_number,
                 checkpoint_summary.timestamp_ms,
                 checkpoint_transaction.transaction.digest().base58_encode(),
-                &move_calls,
+                &move_calls_trimmed,
                 &mut state,
             );
         }

@@ -1,7 +1,7 @@
 [package]
 name = "mys-node"
 version.workspace = true
-authors = ["Mysten Labs <build@mystenlabs.com>"]
+authors = ["Brandon Shaw <brandon@mysocial.network>"]
 license = "Apache-2.0"
 publish = false
 edition = "2021"
@@ -40,7 +40,6 @@ mys-core.workspace = true
 mys-rpc-api.workspace = true
 mys-storage.workspace = true
 mys-network.workspace = true
-mys-json-rpc.workspace = true
 mys-json-rpc-api.workspace = true
 mys-protocol-config.workspace = true
 mys-snapshot.workspace = true

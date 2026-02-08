@@ -1,0 +1,80 @@
+[package]
+name = "mys-indexer-alt-graphql"
+version.workspace = true
+authors = ["Mysten Labs <build@mystenlabs.com>"]
+license = "Apache-2.0"
+publish = false
+edition = "2024"
+
+[[bin]]
+name = "mys-indexer-alt-graphql"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow.workspace = true
+async-graphql = { workspace = true, features = ["dataloader"] }
+async-graphql-axum.workspace = true
+async-graphql-value.workspace = true
+async-trait.workspace = true
+axum.workspace = true
+axum-extra.workspace = true
+bcs.workspace = true
+chrono.workspace = true
+clap.workspace = true
+const-str.workspace = true
+diesel.workspace = true
+diesel-async.workspace = true
+fastcrypto.workspace = true
+fastcrypto-zkp.workspace = true
+futures.workspace = true
+headers.workspace = true
+im.workspace = true
+itertools.workspace = true
+pin-project.workspace = true
+prometheus.workspace = true
+prost-types.workspace = true
+rustls.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+shared-crypto.workspace = true
+telemetry-subscribers.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+toml.workspace = true
+tonic.workspace = true
+tower-http.workspace = true
+tracing.workspace = true
+url.workspace = true
+uuid.workspace = true
+
+move-binary-format.workspace = true
+move-core-types.workspace = true
+move-disassembler.workspace = true
+move-ir-types.workspace = true
+
+bin-version.workspace = true
+mys-default-config.workspace = true
+mys-display.workspace = true
+mys-futures.workspace = true
+mys-indexer-alt-metrics.workspace = true
+mys-indexer-alt-reader.workspace = true
+mys-indexer-alt-schema.workspace = true
+mys-name-service.workspace = true
+mys-package-resolver.workspace = true
+mys-pg-db.workspace = true
+mys-protocol-config.workspace = true
+mys-rpc.workspace = true
+mys-rpc-api.workspace = true
+mys-sdk-types.workspace = true
+mys-sql-macro.workspace = true
+mys-types.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
+reqwest.workspace = true
+
+[features]
+staging = []

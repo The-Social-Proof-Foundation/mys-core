@@ -187,6 +187,12 @@ impl TypeInput {
     }
 
     /// Conversion to a `TypeTag`, which can fail if this value includes invalid identifiers.
+    /// This is an alias for `as_type_tag()` for compatibility.
+    pub fn to_type_tag(&self) -> Result<TypeTag> {
+        self.as_type_tag()
+    }
+
+    /// Conversion to a `TypeTag`, which can fail if this value includes invalid identifiers.
     pub fn as_type_tag(&self) -> Result<TypeTag> {
         use TypeInput as I;
         use TypeTag as T;

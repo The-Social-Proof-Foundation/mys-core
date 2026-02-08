@@ -56,12 +56,11 @@ impl<S, M> Callback<S, M> {
 impl<S, M, RequestBody, ResponseBodyT> Service<Request<RequestBody>> for Callback<S, M>
 where
     S: Service<
-        Request<RequestBody>,
-        Response = Response<ResponseBodyT>,
-        Error: std::fmt::Display + 'static,
-    >,
+            Request<RequestBody>,
+            Response = Response<ResponseBodyT>,
+            Error: std::fmt::Display + 'static,
+        >,
     M: MakeCallbackHandler,
-    RequestBody: http_body::Body<Error: std::fmt::Display + 'static>,
     ResponseBodyT: http_body::Body<Error: std::fmt::Display + 'static>,
 {
     type Response = Response<ResponseBody<ResponseBodyT, M::Handler>>;

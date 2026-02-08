@@ -1066,6 +1066,49 @@ impl fmt::Debug for ConsensusCommitDigest {
     }
 }
 
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
+pub struct CheckpointArtifactsDigest(Digest);
+
+impl CheckpointArtifactsDigest {
+    pub const fn new(digest: [u8; 32]) -> Self {
+        Self(Digest::new(digest))
+    }
+
+    pub const fn inner(&self) -> &[u8; 32] {
+        self.0.inner()
+    }
+
+    pub const fn into_inner(self) -> [u8; 32] {
+        self.0.into_inner()
+    }
+
+    pub fn base58_encode(&self) -> String {
+        Base58::encode(self.0)
+    }
+
+    pub fn from_artifact_digests(digests: Vec<Digest>) -> crate::error::MysResult<Self> {
+        use fastcrypto::hash::Blake2b256;
+        use fastcrypto::hash::HashFunction;
+        let bytes = bcs::to_bytes(&digests)
+            .map_err(|e| crate::error::MysError::from(format!("BCS error: {}", e)))?;
+        Ok(Self(Digest::new(Blake2b256::digest(&bytes).into())))
+    }
+}
+
+impl From<[u8; 32]> for CheckpointArtifactsDigest {
+    fn from(digest: [u8; 32]) -> Self {
+        Self(Digest::new(digest))
+    }
+}
+
+impl fmt::Display for CheckpointArtifactsDigest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
+
 mod test {
     #[allow(unused_imports)]
     use crate::digests::ChainIdentifier;

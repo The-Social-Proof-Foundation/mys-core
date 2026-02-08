@@ -238,6 +238,7 @@ impl ValidatorConfigBuilder {
             verifier_signing_config: VerifierSigningConfig::default(),
             enable_db_write_stall: None,
             local_execution_time_channel_capacity: default_local_execution_time_channel_capacity(),
+            fork_recovery: None,
         }
     }
 
@@ -539,6 +540,7 @@ impl FullnodeConfigBuilder {
             verifier_signing_config: VerifierSigningConfig::default(),
             enable_db_write_stall: None,
             local_execution_time_channel_capacity: default_local_execution_time_channel_capacity(),
+            fork_recovery: None,
         }
     }
 }

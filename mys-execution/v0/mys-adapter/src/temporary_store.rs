@@ -16,6 +16,8 @@ use mys_types::inner_temporary_store::InnerTemporaryStore;
 use mys_types::layout_resolver::LayoutResolver;
 use mys_types::mys_system_state::{get_mys_system_state_wrapper, AdvanceEpochParams};
 use mys_types::storage::{BackingStore, DeleteKindWithOldVersion, DenyListResult, PackageObject};
+use std::collections::BTreeSet;
+use move_core_types::language_storage::TypeTag;
 use mys_types::{
     base_types::{
         MysAddress, ObjectDigest, ObjectID, ObjectRef, SequenceNumber, TransactionDigest,
@@ -273,6 +275,9 @@ impl<'backing> TemporaryStore<'backing> {
                 }
                 SharedInput::Cancelled(_) => {
                     unreachable!("Per object congestion control not supported in effects v1.")
+                }
+                SharedInput::ConsensusStreamEnded(_) => {
+                    unreachable!("Consensus stream ended not supported in effects v1")
                 }
             })
             .collect();
@@ -540,8 +545,8 @@ impl<'backing> TemporaryStore<'backing> {
                 Owner::ObjectOwner(_parent) => {
                     unreachable!("Input objects must be address owned, shared, or immutable")
                 }
-                Owner::ConsensusV2 { .. } => {
-                    unimplemented!("ConsensusV2 does not exist for this execution version")
+                Owner::ConsensusAddressOwner { .. } => {
+                    unimplemented!("ConsensusAddressOwner does not exist for this execution version")
                 }
             }
         }
@@ -573,8 +578,8 @@ impl<'backing> TemporaryStore<'backing> {
                                 "Only system packages can be upgraded"
                             );
                         }
-                        Owner::ConsensusV2 { .. } => {
-                            unimplemented!("ConsensusV2 does not exist for this execution version")
+                        Owner::ConsensusAddressOwner { .. } => {
+                            unimplemented!("ConsensusAddressOwner does not exist for this execution version")
                         }
                     }
                 }
@@ -601,8 +606,8 @@ impl<'backing> TemporaryStore<'backing> {
                             unreachable!("Should already be in authenticated_objs")
                         }
                         Owner::Immutable => unreachable!("Immutable objects cannot be deleted"),
-                        Owner::ConsensusV2 { .. } => {
-                            unimplemented!("ConsensusV2 does not exist for this execution version")
+                        Owner::ConsensusAddressOwner { .. } => {
+                            unimplemented!("ConsensusAddressOwner does not exist for this execution version")
                         }
                     }
                 }
@@ -970,8 +975,6 @@ impl<'backing> ChildObjectResolver for TemporaryStore<'backing> {
         receiving_object_id: &ObjectID,
         receive_object_at_version: SequenceNumber,
         epoch_id: EpochId,
-        // TODO: Delete this parameter once table migration is complete.
-        use_object_per_epoch_marker_table_v2: bool,
     ) -> MysResult<Option<Object>> {
         // You should never be able to try and receive an object after deleting it or writing it in the same
         // transaction since `Receiving` doesn't have copy.
@@ -982,7 +985,6 @@ impl<'backing> ChildObjectResolver for TemporaryStore<'backing> {
             receiving_object_id,
             receive_object_at_version,
             epoch_id,
-            use_object_per_epoch_marker_table_v2,
         )
     }
 }
@@ -996,7 +998,7 @@ impl<'backing> Storage for TemporaryStore<'backing> {
         TemporaryStore::read_object(self, id)
     }
 
-    fn record_execution_results(&mut self, results: ExecutionResults) {
+    fn record_execution_results(&mut self, results: ExecutionResults) -> Result<(), ExecutionError> {
         let ExecutionResults::V1(results) = results else {
             panic!("ExecutionResults::V1 expected in mys-execution v0");
         };
@@ -1004,6 +1006,7 @@ impl<'backing> Storage for TemporaryStore<'backing> {
         for event in results.user_events {
             TemporaryStore::log_event(self, event);
         }
+        Ok(())
     }
 
     fn save_loaded_runtime_objects(
@@ -1022,9 +1025,13 @@ impl<'backing> Storage for TemporaryStore<'backing> {
 
     fn check_coin_deny_list(
         &self,
-        _written_objects: &BTreeMap<ObjectID, Object>,
+        _receiving_funds_type_and_owners: BTreeMap<TypeTag, BTreeSet<MysAddress>>,
     ) -> DenyListResult {
         unreachable!("Coin denylist v2 is not supported in mys-execution v0");
+    }
+
+    fn record_generated_object_ids(&mut self, _generated_ids: BTreeSet<ObjectID>) {
+        // Not used in v0
     }
 }
 

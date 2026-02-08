@@ -28,6 +28,7 @@ use mys_types::transaction::CallArg;
 use mys_types::transaction::Command;
 use mys_types::transaction::ObjectArg;
 use mys_types::transaction::ProgrammableTransaction;
+use mys_types::transaction::SharedObjectMutability;
 use mys_types::transaction::Transaction;
 use mys_types::transaction::TransactionKind;
 use mys_types::TypeTag;
@@ -495,7 +496,7 @@ impl MysClientInner for MysSdkClient {
         Ok(ObjectArg::SharedObject {
             id: MYS_BRIDGE_OBJECT_ID,
             initial_shared_version: SequenceNumber::from_u64(initial_shared_version),
-            mutable: true,
+            mutability: SharedObjectMutability::Mutable,
         })
     }
 

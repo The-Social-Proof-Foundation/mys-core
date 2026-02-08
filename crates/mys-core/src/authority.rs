@@ -783,6 +783,83 @@ impl AuthorityMetrics {
 ///
 pub type StableSyncAuthoritySigner = Pin<Arc<dyn Signer<AuthoritySignature> + Send + Sync>>;
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum SchedulingSource {
+    MysticetiFastPath,
+    NonFastPath,
+}
+
+/// Execution env contains the "environment" for the transaction to be executed in, that is,
+/// all the information necessary for execution that is not specified by the transaction itself.
+#[derive(Debug, Clone)]
+pub struct ExecutionEnv {
+    /// The assigned version of each shared object for the transaction.
+    pub assigned_versions: shared_object_version_manager::AssignedVersions,
+    /// The expected digest of the effects of the transaction, if executing from checkpoint or
+    /// other sources where the effects are known in advance.
+    pub expected_effects_digest: Option<mys_types::digests::TransactionEffectsDigest>,
+    /// The source of the scheduling of the transaction.
+    pub scheduling_source: SchedulingSource,
+    /// Status of the address funds withdraw scheduling of the transaction,
+    /// including both address and object funds withdraws.
+    pub funds_withdraw_status: mys_types::execution_params::FundsWithdrawStatus,
+    /// Transactions that must finish before this transaction can be executed.
+    /// Used to schedule barrier transactions after non-exclusive writes.
+    pub barrier_dependencies: Vec<mys_types::digests::TransactionDigest>,
+}
+
+impl Default for ExecutionEnv {
+    fn default() -> Self {
+        Self {
+            assigned_versions: Default::default(),
+            expected_effects_digest: None,
+            scheduling_source: SchedulingSource::NonFastPath,
+            funds_withdraw_status: mys_types::execution_params::FundsWithdrawStatus::MaybeSufficient,
+            barrier_dependencies: Default::default(),
+        }
+    }
+}
+
+impl ExecutionEnv {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn with_scheduling_source(mut self, scheduling_source: SchedulingSource) -> Self {
+        self.scheduling_source = scheduling_source;
+        self
+    }
+
+    pub fn with_expected_effects_digest(
+        mut self,
+        expected_effects_digest: mys_types::digests::TransactionEffectsDigest,
+    ) -> Self {
+        self.expected_effects_digest = Some(expected_effects_digest);
+        self
+    }
+
+    pub fn with_assigned_versions(
+        mut self,
+        assigned_versions: shared_object_version_manager::AssignedVersions,
+    ) -> Self {
+        self.assigned_versions = assigned_versions;
+        self
+    }
+
+    pub fn with_insufficient_funds(mut self) -> Self {
+        self.funds_withdraw_status = mys_types::execution_params::FundsWithdrawStatus::Insufficient;
+        self
+    }
+
+    pub fn with_barrier_dependencies(
+        mut self,
+        barrier_dependencies: std::collections::BTreeSet<mys_types::digests::TransactionDigest>,
+    ) -> Self {
+        self.barrier_dependencies = barrier_dependencies.into_iter().collect();
+        self
+    }
+}
+
 pub struct AuthorityState {
     // Fixed size, static, identity of the authority
     /// The name of this authority.
@@ -2344,7 +2421,7 @@ impl AuthorityState {
                 .value
                 .move_calls()
                 .into_iter()
-                .map(|(package, module, function)| {
+                .map(|(_idx, package, module, function)| {
                     (*package, module.to_owned(), function.to_owned())
                 }),
             events,

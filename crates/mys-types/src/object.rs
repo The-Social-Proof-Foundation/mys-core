@@ -40,6 +40,11 @@ use self::bounded_visitor::BoundedVisitor;
 
 mod balance_traversal;
 pub mod bounded_visitor;
+pub mod option_visitor;
+pub mod rpc_visitor;
+
+pub use option_visitor::{Error as OptionVisitorError, OptionVisitor};
+pub use rpc_visitor::{Error as RpcVisitorError, RpcVisitor, Writer};
 
 pub const GAS_VALUE_FOR_TESTING: u64 = 300_000_000_000_000;
 pub const OBJECT_START_VERSION: SequenceNumber = SequenceNumber::from_u64(1);
@@ -482,38 +487,15 @@ pub enum Owner {
     },
     /// Object is immutable, and hence ownership doesn't matter.
     Immutable,
-    /// Object is sequenced via consensus. Ownership is managed by the configured authenticator.
-    ///
-    /// Note: wondering what happened to `V1`? `Shared` above was the V1 of consensus objects.
-    ConsensusV2 {
+    /// Object is exclusively owned by a single address and sequenced via consensus.
+    ConsensusAddressOwner {
         /// The version at which the object most recently became a consensus object.
         /// This serves the same function as `initial_shared_version`, except it may change
         /// if the object's Owner type changes.
         start_version: SequenceNumber,
-        /// The authentication mode of the object
-        authenticator: Box<Authenticator>,
+        // The owner of the object.
+        owner: MysAddress,
     },
-}
-
-#[derive(
-    Eq, PartialEq, Debug, Clone, Copy, Deserialize, Serialize, Hash, JsonSchema, Ord, PartialOrd,
-)]
-#[cfg_attr(feature = "fuzzing", derive(proptest_derive::Arbitrary))]
-pub enum Authenticator {
-    /// The contained MysAddress exclusively has all permissions: read, write, delete, transfer
-    SingleOwner(MysAddress),
-}
-
-impl Authenticator {
-    pub fn as_single_owner(&self) -> &MysAddress {
-        // NOTE: Existing callers are written assuming that only singly-owned
-        // ConsensusV2 objects exist. If additional Authenticator variants are
-        // added, do not simply panic here. Instead, change the return type of
-        // this function and update callers accordingly.
-        match self {
-            Self::SingleOwner(address) => address,
-        }
-    }
 }
 
 impl Owner {
@@ -525,7 +507,7 @@ impl Owner {
             Self::Shared { .. }
             | Self::Immutable
             | Self::ObjectOwner(_)
-            | Self::ConsensusV2 { .. } => Err(MysError::UnexpectedOwnerType),
+            | Self::ConsensusAddressOwner { .. } => Err(MysError::UnexpectedOwnerType),
         }
     }
 
@@ -533,20 +515,20 @@ impl Owner {
     // address of ObjectOwner is converted from object id, even though the type is MysAddress.
     pub fn get_owner_address(&self) -> MysResult<MysAddress> {
         match self {
-            Self::AddressOwner(address) | Self::ObjectOwner(address) => Ok(*address),
-            Self::Shared { .. } | Self::Immutable | Self::ConsensusV2 { .. } => {
-                Err(MysError::UnexpectedOwnerType)
-            }
+            Self::AddressOwner(address)
+            | Self::ObjectOwner(address)
+            | Self::ConsensusAddressOwner { owner: address, .. } => Ok(*address),
+            Self::Shared { .. } | Self::Immutable => Err(MysError::UnexpectedOwnerType),
         }
     }
 
-    // Returns initial_shared_version for Shared objects, and start_version for ConsensusV2 objects.
+    // Returns initial_shared_version for Shared objects, and start_version for ConsensusAddressOwner objects.
     pub fn start_version(&self) -> Option<SequenceNumber> {
         match self {
             Self::Shared {
                 initial_shared_version,
             } => Some(*initial_shared_version),
-            Self::ConsensusV2 { start_version, .. } => Some(*start_version),
+            Self::ConsensusAddressOwner { start_version, .. } => Some(*start_version),
             Self::Immutable | Self::AddressOwner(_) | Self::ObjectOwner(_) => None,
         }
     }
@@ -568,7 +550,7 @@ impl Owner {
     }
 
     pub fn is_consensus(&self) -> bool {
-        matches!(self, Owner::Shared { .. } | Owner::ConsensusV2 { .. })
+        matches!(self, Owner::Shared { .. } | Owner::ConsensusAddressOwner { .. })
     }
 }
 
@@ -580,7 +562,7 @@ impl PartialEq<ObjectID> for Owner {
             Self::AddressOwner(_)
             | Self::Shared { .. }
             | Self::Immutable
-            | Self::ConsensusV2 { .. } => false,
+            | Self::ConsensusAddressOwner { .. } => false,
         }
     }
 }
@@ -602,26 +584,16 @@ impl Display for Owner {
             } => {
                 write!(f, "Shared( {} )", initial_shared_version.value())
             }
-            Self::ConsensusV2 {
+            Self::ConsensusAddressOwner {
                 start_version,
-                authenticator,
+                owner,
             } => {
                 write!(
                     f,
-                    "ConsensusV2( {}, {} )",
+                    "ConsensusAddressOwner( {}, {} )",
                     start_version.value(),
-                    authenticator
+                    owner
                 )
-            }
-        }
-    }
-}
-
-impl Display for Authenticator {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::SingleOwner(address) => {
-                write!(f, "SingleOwner({})", address)
             }
         }
     }
@@ -939,11 +911,9 @@ impl ObjectInner {
             | Owner::ObjectOwner(_)
             | Owner::Shared { .. }
             | Owner::Immutable => DEFAULT_OWNER_SIZE,
-            Owner::ConsensusV2 { authenticator, .. } => {
+            Owner::ConsensusAddressOwner { .. } => {
                 DEFAULT_OWNER_SIZE
-                    + match authenticator.as_ref() {
-                        Authenticator::SingleOwner(_) => 8, // marginal cost to store both MysAddress and SequenceNumber
-                    }
+                    + 8 // marginal cost to store both MysAddress and SequenceNumber
             }
         };
         let meta_data_size = owner_size + TRANSACTION_DIGEST_SIZE + STORAGE_REBATE_SIZE;

@@ -112,7 +112,8 @@ async fn max_page_size(client: &Client) -> Result<i32> {
         .await
         .context("Failed to fetch max page size")?
         .service_config
-        .max_page_size)
+        .max_page_size
+        .unwrap_or(50))
 }
 
 /// Read all the packages between `after_checkpoint` and `before_checkpoint`, in batches of
@@ -131,11 +132,10 @@ async fn fetch_packages(
 ) -> Result<(Option<u64>, Vec<packages::MovePackage>)> {
     let packages::Query {
         checkpoint: checkpoint_viewed_at,
-        packages:
-            packages::MovePackageConnection {
-                mut page_info,
-                mut nodes,
-            },
+        packages: Some(packages::MovePackageConnection {
+            mut page_info,
+            mut nodes,
+        }),
     } = client
         .query(packages::build(
             page_size,
@@ -144,7 +144,10 @@ async fn fetch_packages(
             before_checkpoint.map(UInt53),
         ))
         .await
-        .with_context(|| "Failed to fetch page 1 of packages.")?;
+        .with_context(|| "Failed to fetch page 1 of packages.")?
+    else {
+        return Ok((None, vec![]));
+    };
 
     for i in 2.. {
         if !page_info.has_next_page {
@@ -160,7 +163,8 @@ async fn fetch_packages(
             ))
             .await
             .with_context(|| format!("Failed to fetch page {i} of packages."))?
-            .packages;
+            .packages
+            .ok_or_else(|| anyhow::anyhow!("Packages field is null"))?;
 
         nodes.extend(packages.nodes);
         page_info = packages.page_info;
@@ -207,7 +211,7 @@ async fn fetch_packages(
 ///
 /// - `*.mv` -- a BCS serialization of each compiled module in the package.
 fn dump_package(output_dir: &Path, pkg: &packages::MovePackage) -> Result<()> {
-    let Some(query::Base64(bcs)) = &pkg.bcs else {
+    let Some(query::Base64(bcs)) = &pkg.object_bcs else {
         bail!("Missing BCS");
     };
 

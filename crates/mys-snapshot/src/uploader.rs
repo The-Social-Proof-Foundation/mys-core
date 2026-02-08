@@ -15,7 +15,7 @@ use mys_storage::object_store::util::{
 };
 use mys_storage::FileCompression;
 use mys_types::digests::ChainIdentifier;
-use mys_types::messages_checkpoint::CheckpointCommitment::ECMHLiveObjectSetDigest;
+use mys_types::messages_checkpoint::CheckpointCommitment;
 use object_store::DynObjectStore;
 use prometheus::{
     register_int_counter_with_registry, register_int_gauge_with_registry, IntCounter, IntGauge,
@@ -142,10 +142,14 @@ impl StateSnapshotUploader {
                     .get_epoch_state_commitments(*epoch)
                     .expect("Expected last checkpoint of epoch to have end of epoch data")
                     .expect("Expected end of epoch data to be present");
-                let ECMHLiveObjectSetDigest(state_hash_commitment) = commitments
+                let state_hash_commitment = match commitments
                     .last()
                     .expect("Expected at least one commitment")
-                    .clone();
+                    .clone()
+                {
+                    CheckpointCommitment::ECMHLiveObjectSetDigest(digest) => digest,
+                    _ => return Err(anyhow::anyhow!("Expected ECMHLiveObjectSetDigest")),
+                };
                 state_snapshot_writer
                     .write(*epoch, db, state_hash_commitment, self.chain_identifier)
                     .await?;

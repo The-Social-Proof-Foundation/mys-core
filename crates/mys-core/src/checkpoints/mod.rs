@@ -39,7 +39,7 @@ use mys_protocol_config::ProtocolVersion;
 use mys_types::base_types::{AuthorityName, EpochId, TransactionDigest};
 use mys_types::committee::StakeUnit;
 use mys_types::crypto::AuthorityStrongQuorumSignInfo;
-use mys_types::digests::{CheckpointContentsDigest, CheckpointDigest};
+use mys_types::digests::{CheckpointContentsDigest, CheckpointDigest, TransactionEffectsDigest};
 use mys_types::effects::{TransactionEffects, TransactionEffectsAPI};
 use mys_types::error::{MysError, MysResult};
 use mys_types::gas::GasCostSummary;
@@ -183,6 +183,16 @@ pub struct CheckpointStore {
     /// Watermarks used to determine the highest verified, fully synced, and
     /// fully executed checkpoints
     pub(crate) watermarks: DBMap<CheckpointWatermark, (CheckpointSequenceNumber, CheckpointDigest)>,
+
+    /// Stores transaction fork detection information
+    pub(crate) transaction_fork_detected: DBMap<
+        u8,
+        (
+            TransactionDigest,
+            TransactionEffectsDigest,
+            TransactionEffectsDigest,
+        ),
+    >,
 }
 
 impl CheckpointStore {
@@ -750,6 +760,102 @@ impl CheckpointStore {
         Ok(())
     }
 
+    pub fn clear_locally_computed_checkpoints_from(
+        &self,
+        from_seq: CheckpointSequenceNumber,
+    ) -> MysResult {
+        let keys: Vec<_> = self
+            .locally_computed_checkpoints
+            .safe_iter_with_bounds(Some(from_seq), None)
+            .map(|r| r.map(|(k, _)| k))
+            .collect::<Result<_, _>>()?;
+        if let Some(&last_local_summary) = keys.last() {
+            let mut batch = self.locally_computed_checkpoints.batch();
+            batch
+                .delete_batch(&self.locally_computed_checkpoints, keys.iter())
+                .expect("Failed to delete locally computed checkpoints");
+            batch
+                .write()
+                .expect("Failed to delete locally computed checkpoints");
+            warn!(
+                from_seq,
+                last_local_summary,
+                "Cleared locally_computed_checkpoints from {} (inclusive) through {} (inclusive)",
+                from_seq,
+                last_local_summary
+            );
+        }
+        Ok(())
+    }
+
+    pub fn record_checkpoint_fork_detected(
+        &self,
+        checkpoint_seq: CheckpointSequenceNumber,
+        checkpoint_digest: CheckpointDigest,
+    ) -> Result<(), TypedStoreError> {
+        info!(
+            checkpoint_seq = checkpoint_seq,
+            checkpoint_digest = ?checkpoint_digest,
+            "Recording checkpoint fork detection in database"
+        );
+        self.watermarks.insert(
+            &CheckpointWatermark::CheckpointForkDetected,
+            &(checkpoint_seq, checkpoint_digest),
+        )
+    }
+
+    pub fn get_checkpoint_fork_detected(
+        &self,
+    ) -> Result<Option<(CheckpointSequenceNumber, CheckpointDigest)>, TypedStoreError> {
+        self.watermarks
+            .get(&CheckpointWatermark::CheckpointForkDetected)
+    }
+
+    pub fn clear_checkpoint_fork_detected(&self) -> Result<(), TypedStoreError> {
+        self.watermarks
+            .remove(&CheckpointWatermark::CheckpointForkDetected)
+    }
+
+    pub fn record_transaction_fork_detected(
+        &self,
+        tx_digest: TransactionDigest,
+        expected_effects_digest: TransactionEffectsDigest,
+        actual_effects_digest: TransactionEffectsDigest,
+    ) -> Result<(), TypedStoreError> {
+        info!(
+            tx_digest = ?tx_digest,
+            expected_effects_digest = ?expected_effects_digest,
+            actual_effects_digest = ?actual_effects_digest,
+            "Recording transaction fork detection in database"
+        );
+        const TRANSACTION_FORK_DETECTED_KEY: u8 = 0;
+        self.transaction_fork_detected.insert(
+            &TRANSACTION_FORK_DETECTED_KEY,
+            &(tx_digest, expected_effects_digest, actual_effects_digest),
+        )
+    }
+
+    pub fn get_transaction_fork_detected(
+        &self,
+    ) -> Result<
+        Option<(
+            TransactionDigest,
+            TransactionEffectsDigest,
+            TransactionEffectsDigest,
+        )>,
+        TypedStoreError,
+    > {
+        const TRANSACTION_FORK_DETECTED_KEY: u8 = 0;
+        self.transaction_fork_detected
+            .get(&TRANSACTION_FORK_DETECTED_KEY)
+    }
+
+    pub fn clear_transaction_fork_detected(&self) -> Result<(), TypedStoreError> {
+        const TRANSACTION_FORK_DETECTED_KEY: u8 = 0;
+        self.transaction_fork_detected
+            .remove(&TRANSACTION_FORK_DETECTED_KEY)
+    }
+
     /// Re-executes all transactions from all local, uncertified checkpoints for crash recovery.
     /// All transactions thus re-executed are guaranteed to not have any missing dependencies,
     /// because we start from the highest executed checkpoint, and proceed through checkpoints in
@@ -857,6 +963,7 @@ pub enum CheckpointWatermark {
     HighestSynced,
     HighestExecuted,
     HighestPruned,
+    CheckpointForkDetected,
 }
 
 pub struct CheckpointBuilder {

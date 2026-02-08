@@ -4,7 +4,7 @@
 
 use crate::gas_charger::GasCharger;
 use move_core_types::account_address::AccountAddress;
-use move_core_types::language_storage::StructTag;
+use move_core_types::language_storage::{StructTag, TypeTag};
 use move_core_types::resolver::ResourceResolver;
 use mys_protocol_config::ProtocolConfig;
 use mys_types::base_types::VersionDigest;
@@ -224,6 +224,9 @@ impl<'backing> TemporaryStore<'backing> {
                     }
                     SharedInput::Cancelled(_) => {
                         unreachable!("Per object congestion control not supported in effects v1.")
+                    }
+                    SharedInput::ConsensusStreamEnded(_) => {
+                        unreachable!("Consensus stream ended not supported in effects v1")
                     }
                 })
                 .collect();
@@ -661,8 +664,8 @@ impl<'backing> TemporaryStore<'backing> {
                 Owner::ObjectOwner(_parent) => {
                     unreachable!("Input objects must be address owned, shared, or immutable")
                 }
-                Owner::ConsensusV2 { .. } => {
-                    unimplemented!("ConsensusV2 does not exist for this execution version")
+                Owner::ConsensusAddressOwner { .. } => {
+                    unimplemented!("ConsensusAddressOwner does not exist for this execution version")
                 }
             }
         }
@@ -692,8 +695,8 @@ impl<'backing> TemporaryStore<'backing> {
                         "Only system packages can be upgraded"
                     );
                 }
-                Owner::ConsensusV2 { .. } => {
-                    unimplemented!("ConsensusV2 does not exist for this execution version")
+                Owner::ConsensusAddressOwner { .. } => {
+                    unimplemented!("ConsensusAddressOwner does not exist for this execution version")
                 }
             }
         }
@@ -1072,8 +1075,6 @@ impl<'backing> ChildObjectResolver for TemporaryStore<'backing> {
         receiving_object_id: &ObjectID,
         receive_object_at_version: SequenceNumber,
         epoch_id: EpochId,
-        // TODO: Delete this parameter once table migration is complete.
-        use_object_per_epoch_marker_table_v2: bool,
     ) -> MysResult<Option<Object>> {
         // You should never be able to try and receive an object after deleting it or writing it in the same
         // transaction since `Receiving` doesn't have copy.
@@ -1090,7 +1091,6 @@ impl<'backing> ChildObjectResolver for TemporaryStore<'backing> {
             receiving_object_id,
             receive_object_at_version,
             epoch_id,
-            use_object_per_epoch_marker_table_v2,
         )
     }
 }
@@ -1105,13 +1105,14 @@ impl<'backing> Storage for TemporaryStore<'backing> {
     }
 
     /// Take execution results v2, and translate it back to be compatible with effects v1.
-    fn record_execution_results(&mut self, results: ExecutionResults) {
+    fn record_execution_results(&mut self, results: ExecutionResults) -> Result<(), ExecutionError> {
         let ExecutionResults::V2(results) = results else {
             panic!("ExecutionResults::V2 expected in mys-execution v1 and above");
         };
         // It's important to merge instead of override results because it's
         // possible to execute PT more than once during tx execution.
         self.execution_results.merge_results(results);
+        Ok(())
     }
 
     fn save_loaded_runtime_objects(
@@ -1130,9 +1131,13 @@ impl<'backing> Storage for TemporaryStore<'backing> {
 
     fn check_coin_deny_list(
         &self,
-        _written_objects: &BTreeMap<ObjectID, Object>,
+        _receiving_funds_type_and_owners: BTreeMap<TypeTag, BTreeSet<MysAddress>>,
     ) -> DenyListResult {
         unreachable!("Coin denylist v2 is not supported in mys-execution v1");
+    }
+
+    fn record_generated_object_ids(&mut self, _generated_ids: BTreeSet<ObjectID>) {
+        // Not used in v1
     }
 }
 

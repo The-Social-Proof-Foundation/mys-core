@@ -14,7 +14,6 @@ use tokio_rustls::TlsAcceptor;
 use tower::{Service, ServiceBuilder, ServiceExt};
 use tracing::trace;
 
-use self::body::BoxBody;
 use self::connection_info::ActiveConnections;
 
 pub use http;
@@ -31,6 +30,8 @@ pub use config::Config;
 pub use listener::Listener;
 pub use listener::ListenerExt;
 
+pub use body::BoxBody;
+pub use body::boxed;
 pub use connection_info::ConnectInfo;
 pub use connection_info::ConnectionId;
 pub use connection_info::ConnectionInfo;

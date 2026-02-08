@@ -2,13 +2,17 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
+use anyhow::anyhow;
 use diesel::prelude::*;
 use mys_field_count::FieldCount;
-use mys_protocol_config::{Chain, ProtocolVersion};
-use mys_types::digests::{ChainIdentifier, CheckpointDigest};
+use mys_protocol_config::Chain;
+use mys_protocol_config::ProtocolVersion;
+use mys_types::digests::ChainIdentifier;
+use mys_types::digests::CheckpointDigest;
 
-use crate::schema::{kv_checkpoints, kv_genesis};
+use crate::schema::kv_checkpoints;
+use crate::schema::kv_genesis;
 
 #[derive(Insertable, Debug, Clone, FieldCount, Queryable)]
 #[diesel(table_name = kv_checkpoints)]

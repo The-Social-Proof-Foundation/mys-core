@@ -19,7 +19,7 @@ use mys_storage::object_store::util::{
     path_to_filesystem, put, run_manifest_update_loop, write_snapshot_manifest,
 };
 use object_store::path::Path;
-use object_store::DynObjectStore;
+use object_store::{DynObjectStore, ObjectStoreExt};
 use prometheus::{register_int_gauge_with_registry, IntGauge, Registry};
 use std::fs;
 use std::num::NonZeroUsize;

@@ -3,24 +3,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use futures::future;
-use jsonrpsee::{core::RpcResult, proc_macros::rpc};
-use mys_json_rpc_types::{
-    MysTransactionBlockResponse, MysTransactionBlockResponseOptions,
-    MysTransactionBlockResponseQuery, Page,
-};
+use jsonrpsee::core::RpcResult;
+use jsonrpsee::proc_macros::rpc;
+use mys_json_rpc_types::Page;
+use mys_json_rpc_types::MysTransactionBlockResponse;
+use mys_json_rpc_types::MysTransactionBlockResponseOptions;
 use mys_open_rpc::Module;
 use mys_open_rpc_macros::open_rpc;
 use mys_types::digests::TransactionDigest;
-use serde::{Deserialize, Serialize};
 
-use self::error::Error;
-
-use crate::{
-    context::Context,
-    error::{rpc_bail, InternalContext, RpcError},
-};
-
-use super::rpc_module::RpcModule;
+use crate::api::rpc_module::RpcModule;
+use crate::api::transactions::error::Error;
+use crate::api::transactions::filter::MysTransactionBlockResponseQuery;
+use crate::context::Context;
+use crate::error::InternalContext;
+use crate::error::RpcError;
+use crate::error::rpc_bail;
 
 mod error;
 mod filter;
@@ -36,7 +34,7 @@ trait TransactionsApi {
         /// The digest of the queried transaction.
         digest: TransactionDigest,
         /// Options controlling the output format.
-        options: MysTransactionBlockResponseOptions,
+        options: Option<MysTransactionBlockResponseOptions>,
     ) -> RpcResult<MysTransactionBlockResponse>;
 }
 
@@ -70,29 +68,21 @@ trait QueryTransactionsApi {
 
 pub(crate) struct Transactions(pub Context);
 
-pub(crate) struct QueryTransactions(pub Context, pub TransactionsConfig);
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct TransactionsConfig {
-    /// The default page size limit when querying transactions, if none is provided.
-    pub default_page_size: usize,
-
-    /// The largest acceptable page size when querying transactions. Requesting a page larger than
-    /// this is a user error.
-    pub max_page_size: usize,
-}
+pub(crate) struct QueryTransactions(pub Context);
 
 #[async_trait::async_trait]
 impl TransactionsApiServer for Transactions {
     async fn get_transaction_block(
         &self,
         digest: TransactionDigest,
-        options: MysTransactionBlockResponseOptions,
+        options: Option<MysTransactionBlockResponseOptions>,
     ) -> RpcResult<MysTransactionBlockResponse> {
         let Self(ctx) = self;
-        Ok(response::transaction(ctx, digest, &options)
-            .await
-            .with_internal_context(|| format!("Failed to get transaction {digest}"))?)
+        Ok(
+            response::transaction(ctx, digest, &options.unwrap_or_default())
+                .await
+                .with_internal_context(|| format!("Failed to get transaction {digest}"))?,
+        )
     }
 }
 
@@ -105,20 +95,53 @@ impl QueryTransactionsApiServer for QueryTransactions {
         limit: Option<usize>,
         descending_order: Option<bool>,
     ) -> RpcResult<Page<MysTransactionBlockResponse, String>> {
-        let Self(ctx, config) = self;
+        let Self(ctx) = self;
 
         let Page {
             data: digests,
             next_cursor,
             has_next_page,
-        } = filter::transactions(ctx, config, &query.filter, cursor, limit, descending_order)
+        } = filter::transactions(ctx, &query.filter, cursor.clone(), limit, descending_order)
             .await?;
 
         let options = query.options.unwrap_or_default();
 
-        let tx_futures = digests
-            .iter()
-            .map(|d| response::transaction(ctx, *d, &options));
+        let tx_futures = digests.iter().map(|d| {
+            async {
+                let mut tx = response::transaction(ctx, *d, &options).await;
+
+                let config = &ctx.config().transactions;
+                let mut interval = tokio::time::interval(std::time::Duration::from_millis(
+                    config.tx_retry_interval_ms,
+                ));
+
+                let mut retries = 0;
+                for _ in 0..config.tx_retry_count {
+                    // Retry only if the error is an invalid params error, which can only be due to
+                    // the transaction not being found in the kv store or tx balance changes table.
+                    if let Err(RpcError::InvalidParams(
+                        _e @ (Error::BalanceChangesNotFound(_) | Error::NotFound(_)),
+                    )) = tx
+                    {
+                        interval.tick().await;
+                        retries += 1;
+                        tx = response::transaction(ctx, *d, &options).await;
+                        ctx.metrics()
+                            .read_retries
+                            .with_label_values(&["tx_response"])
+                            .inc();
+                    } else {
+                        break;
+                    }
+                }
+
+                ctx.metrics()
+                    .read_retries_per_request
+                    .with_label_values(&["tx_response"])
+                    .observe(retries as f64);
+                tx
+            }
+        });
 
         let data = future::join_all(tx_futures)
             .await
@@ -135,7 +158,7 @@ impl QueryTransactionsApiServer for QueryTransactions {
 
         Ok(Page {
             data,
-            next_cursor,
+            next_cursor: next_cursor.or(cursor),
             has_next_page,
         })
     }
@@ -158,14 +181,5 @@ impl RpcModule for QueryTransactions {
 
     fn into_impl(self) -> jsonrpsee::RpcModule<Self> {
         self.into_rpc()
-    }
-}
-
-impl Default for TransactionsConfig {
-    fn default() -> Self {
-        Self {
-            default_page_size: 50,
-            max_page_size: 100,
-        }
     }
 }

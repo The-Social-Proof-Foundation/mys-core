@@ -13,11 +13,12 @@ mod checked {
     use crate::gas_model::units_types::CostTable;
     use crate::transaction::ObjectReadResult;
     use crate::{
+        ObjectID,
         error::{ExecutionError, ExecutionErrorKind},
         gas_model::tables::{GasStatus, ZERO_COST_SCHEDULE},
-        ObjectID,
     };
     use move_core_types::vm_status::StatusCode;
+    use serde::{Deserialize, Serialize};
     use mys_protocol_config::*;
 
     /// A bucket defines a range of units that will be priced the same.
@@ -102,6 +103,8 @@ mod checked {
         pub execution_cost_table: CostTable,
         /// Computation buckets to cost transaction in price groups
         computation_bucket: Vec<ComputationBucket>,
+        /// Max gas price for aborted transactions.
+        max_gas_price_rgp_factor_for_aborted_transactions: Option<u64>,
     }
 
     impl std::fmt::Debug for MysCostTable {
@@ -128,6 +131,7 @@ mod checked {
                 storage_per_byte_cost: c.obj_data_cost_refundable(),
                 execution_cost_table: cost_table_for_version(c.gas_model_version()),
                 computation_bucket: computation_bucket(c.max_gas_computation_bucket()),
+                max_gas_price_rgp_factor_for_aborted_transactions: None,
             }
         }
 
@@ -141,11 +145,12 @@ mod checked {
                 execution_cost_table: ZERO_COST_SCHEDULE.clone(),
                 // should not matter
                 computation_bucket: computation_bucket(5_000_000),
+                max_gas_price_rgp_factor_for_aborted_transactions: None,
             }
         }
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct PerObjectStorage {
         /// storage_cost is the total storage gas to charge. This is computed
         /// at the end of execution while determining storage charges.
@@ -159,6 +164,16 @@ mod checked {
         pub storage_rebate: u64,
         /// The object size post-transaction in bytes
         pub new_size: u64,
+    }
+
+    #[derive(Debug, Clone, Copy)]
+    enum GasRoundingMode {
+        /// Bucketize the computation cost according to predefined buckets.
+        Bucketize,
+        /// Rounding value to round up gas charges.
+        Stepped(u64),
+        /// Round by keeping just over half digits
+        KeepHalfDigits,
     }
 
     #[allow(dead_code)]
@@ -201,8 +216,8 @@ mod checked {
         /// Amount of storage rebate accumulated when we are running in unmetered mode (i.e. system transaction).
         /// This allows us to track how much storage rebate we need to retain in system transactions.
         unmetered_storage_rebate: u64,
-        /// Rounding value to round up gas charges.
-        gas_rounding_step: Option<u64>,
+        /// Rounding mode for gas charges.
+        gas_rounding_mode: GasRoundingMode,
     }
 
     impl MysGasStatus {
@@ -214,10 +229,14 @@ mod checked {
             reference_gas_price: u64,
             storage_gas_price: u64,
             rebate_rate: u64,
-            gas_rounding_step: Option<u64>,
+            gas_rounding_mode: GasRoundingMode,
             cost_table: MysCostTable,
         ) -> MysGasStatus {
-            let gas_rounding_step = gas_rounding_step.map(|val| val.max(1));
+            let gas_rounding_mode = match gas_rounding_mode {
+                GasRoundingMode::Bucketize => GasRoundingMode::Bucketize,
+                GasRoundingMode::Stepped(val) => GasRoundingMode::Stepped(val.max(1)),
+                GasRoundingMode::KeepHalfDigits => GasRoundingMode::KeepHalfDigits,
+            };
             MysGasStatus {
                 gas_status: move_gas_status,
                 gas_budget,
@@ -229,7 +248,7 @@ mod checked {
                 per_object_storage: Vec::new(),
                 rebate_rate,
                 unmetered_storage_rebate: 0,
-                gas_rounding_step,
+                gas_rounding_mode,
                 cost_table,
             }
         }
@@ -248,7 +267,15 @@ mod checked {
                 gas_budget
             };
             let mys_cost_table = MysCostTable::new(config, gas_price);
-            let gas_rounding_step = config.gas_rounding_step_as_option();
+            let gas_rounding_mode = if let Some(step) = config.gas_rounding_step_as_option() {
+                if step == 0 {
+                    GasRoundingMode::KeepHalfDigits
+                } else {
+                    GasRoundingMode::Stepped(step)
+                }
+            } else {
+                GasRoundingMode::Bucketize
+            };
             Self::new(
                 GasStatus::new(
                     mys_cost_table.execution_cost_table.clone(),
@@ -262,7 +289,7 @@ mod checked {
                 reference_gas_price,
                 storage_gas_price,
                 config.storage_rebate_rate(),
-                gas_rounding_step,
+                gas_rounding_mode,
                 mys_cost_table,
             )
         }
@@ -276,7 +303,7 @@ mod checked {
                 0,
                 0,
                 0,
-                None,
+                GasRoundingMode::Bucketize,
                 MysCostTable::unmetered(),
             )
         }
@@ -367,17 +394,26 @@ mod checked {
 
         fn bucketize_computation(&mut self) -> Result<(), ExecutionError> {
             let gas_used = self.gas_status.gas_used_pre_gas_price();
-            let gas_used = if let Some(gas_rounding) = self.gas_rounding_step {
-                if gas_used > 0 && gas_used % gas_rounding == 0 {
-                    gas_used * self.gas_price
-                } else {
-                    ((gas_used / gas_rounding) + 1) * gas_rounding * self.gas_price
+            // For all cases, use the user's gas price
+            let effective_gas_price = self.gas_price;
+            let gas_used = match self.gas_rounding_mode {
+                GasRoundingMode::KeepHalfDigits => {
+                    half_digits_rounding(gas_used) * effective_gas_price
                 }
-            } else {
-                let bucket_cost = get_bucket_cost(&self.cost_table.computation_bucket, gas_used);
-                // charge extra on top of `computation_cost` to make the total computation
-                // cost a bucket value
-                bucket_cost * self.gas_price
+                GasRoundingMode::Stepped(gas_rounding) => {
+                    if gas_used > 0 && gas_used % gas_rounding == 0 {
+                        gas_used * effective_gas_price
+                    } else {
+                        ((gas_used / gas_rounding) + 1) * gas_rounding * effective_gas_price
+                    }
+                }
+                GasRoundingMode::Bucketize => {
+                    let bucket_cost =
+                        get_bucket_cost(&self.cost_table.computation_bucket, gas_used);
+                    // charge extra on top of `computation_cost` to make the total computation
+                    // cost a bucket value
+                    bucket_cost * effective_gas_price
+                }
             };
             if self.gas_budget <= gas_used {
                 self.computation_cost = self.gas_budget;
@@ -514,5 +550,43 @@ mod checked {
             self.per_object_storage = Vec::new();
             self.computation_cost = self.gas_budget;
         }
+
+    }
+
+    fn half_digits_rounding(n: u64) -> u64 {
+        if n < 1000 {
+            return 1000;
+        }
+        let digits = n.ilog10();
+        let drop = digits / 2;
+        let base = 10u64.pow(drop);
+        n.div_ceil(base) * base
+    }
+
+    #[test]
+    fn test_half_digits_rounding() {
+        assert_eq!(half_digits_rounding(0), 1000);
+        assert_eq!(half_digits_rounding(1), 1000);
+        assert_eq!(half_digits_rounding(999), 1000);
+        assert_eq!(half_digits_rounding(1000), 1000);
+        assert_eq!(half_digits_rounding(1001), 1010);
+        assert_eq!(half_digits_rounding(1050), 1050);
+        assert_eq!(half_digits_rounding(1999), 2000);
+        assert_eq!(half_digits_rounding(20_000), 20_000);
+        assert_eq!(half_digits_rounding(20_001), 20_100);
+        assert_eq!(half_digits_rounding(20_500), 20_500);
+        assert_eq!(half_digits_rounding(29_999), 30_000);
+        assert_eq!(half_digits_rounding(300_000), 300_000);
+        assert_eq!(half_digits_rounding(300_001), 300_100);
+        assert_eq!(half_digits_rounding(305_500), 305_500);
+        assert_eq!(half_digits_rounding(305_501), 305_600);
+        assert_eq!(half_digits_rounding(999_999), 1_000_000);
+        assert_eq!(half_digits_rounding(1_000_000), 1_000_000);
+        assert_eq!(half_digits_rounding(1_000_001), 1_001_000);
+        assert_eq!(half_digits_rounding(1_005_000), 1_005_000);
+        assert_eq!(half_digits_rounding(1_005_001), 1_006_000);
+        assert_eq!(half_digits_rounding(1_999_999), 2_000_000);
+        assert_eq!(half_digits_rounding(10_000_001), 10_001_000);
+        assert_eq!(half_digits_rounding(100_000_001), 100_010_000);
     }
 }

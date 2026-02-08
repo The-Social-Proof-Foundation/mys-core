@@ -2,17 +2,17 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::crypto::{MysKeyPair, Signer};
+use crate::MysAddress;
+use crate::crypto::{Signer, MysKeyPair};
 use crate::multisig::{MultiSig, MultiSigPublicKey};
 use crate::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use crate::transaction::{SenderSignedData, TEST_ONLY_GAS_UNIT_FOR_TRANSFER};
-use crate::MysAddress;
 use crate::{
-    base_types::{dbg_addr, ObjectID},
+    base_types::{ObjectID, dbg_addr},
     committee::Committee,
     crypto::{
-        get_key_pair, get_key_pair_from_rng, AccountKeyPair, AuthorityKeyPair,
-        AuthorityPublicKeyBytes, DefaultHash, Signature, SignatureScheme,
+        AccountKeyPair, AuthorityKeyPair, AuthorityPublicKeyBytes, DefaultHash, Signature,
+        SignatureScheme, get_key_pair, get_key_pair_from_rng,
     },
     object::Object,
     signature::GenericSignature,
@@ -22,8 +22,8 @@ use crate::{
 use fastcrypto::ed25519::Ed25519KeyPair;
 use fastcrypto::hash::HashFunction;
 use fastcrypto::traits::KeyPair as KeypairTraits;
-use rand::rngs::StdRng;
 use rand::SeedableRng;
+use rand::rngs::StdRng;
 use serde::Deserialize;
 use shared_crypto::intent::{Intent, IntentMessage};
 use std::collections::BTreeMap;

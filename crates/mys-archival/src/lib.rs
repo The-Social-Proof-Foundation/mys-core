@@ -23,7 +23,7 @@ use mys_storage::object_store::util::{get, put};
 use mys_storage::object_store::{ObjectStoreGetExt, ObjectStorePutExt};
 use mys_storage::{compute_sha3_checksum, compute_sha3_checksum_for_bytes, SHA3_BYTES};
 use mys_types::base_types::ExecutionData;
-use mys_types::messages_checkpoint::{FullCheckpointContents, VerifiedCheckpointContents};
+use mys_types::messages_checkpoint::{FullCheckpointContents, VerifiedCheckpointContents, VersionedFullCheckpointContents};
 use mys_types::storage::{SingleCheckpointSharedInMemoryStore, WriteStore};
 use num_enum::IntoPrimitive;
 use num_enum::TryFromPrimitive;
@@ -343,6 +343,8 @@ pub async fn write_manifest<S: ObjectStorePutExt>(
 pub async fn read_manifest_as_json(remote_store_config: ObjectStoreConfig) -> Result<String> {
     let metrics = ArchiveReaderMetrics::new(&Registry::default());
     let config = ArchiveReaderConfig {
+        ingestion_url: None,
+        remote_store_options: vec![],
         remote_store_config,
         download_concurrency: NonZeroUsize::new(1).unwrap(),
         use_for_pruning_watermark: false,
@@ -384,7 +386,7 @@ pub async fn verify_archive_with_genesis_config(
     );
     store.insert_genesis_state(
         genesis.checkpoint(),
-        VerifiedCheckpointContents::new_unchecked(fullcheckpoint_contents),
+        VerifiedCheckpointContents::new_unchecked(VersionedFullCheckpointContents::V1(fullcheckpoint_contents)),
         genesis_committee,
     );
 
@@ -418,6 +420,8 @@ pub async fn verify_archive_with_checksums(
 ) -> Result<()> {
     let metrics = ArchiveReaderMetrics::new(&Registry::default());
     let config = ArchiveReaderConfig {
+        ingestion_url: None,
+        remote_store_options: vec![],
         remote_store_config,
         download_concurrency: NonZeroUsize::new(concurrency).unwrap(),
         use_for_pruning_watermark: false,
@@ -451,6 +455,8 @@ where
 {
     let metrics = ArchiveReaderMetrics::new(&Registry::default());
     let config = ArchiveReaderConfig {
+        ingestion_url: None,
+        remote_store_options: vec![],
         remote_store_config,
         download_concurrency: NonZeroUsize::new(concurrency).unwrap(),
         use_for_pruning_watermark: false,

@@ -8,43 +8,19 @@ use anemo_tower::callback::CallbackLayer;
 use anemo_tower::trace::DefaultMakeSpan;
 use anemo_tower::trace::DefaultOnFailure;
 use anemo_tower::trace::TraceLayer;
-use anyhow::anyhow;
+use anyhow::Context;
 use anyhow::Result;
+use anyhow::anyhow;
 use arc_swap::ArcSwap;
 use fastcrypto_zkp::bn254::zk_login::JwkId;
 use fastcrypto_zkp::bn254::zk_login::OIDCProvider;
 use futures::future::BoxFuture;
-use futures::TryFutureExt;
-use mys_core::authority::authority_store_tables::{
-    AuthorityPerpetualTablesOptions, AuthorityPrunerTables,
-};
-use mys_core::authority::backpressure::BackpressureManager;
-use mys_core::authority::epoch_start_configuration::EpochFlag;
-use mys_core::authority::execution_time_estimator::ExecutionTimeObserver;
-use mys_core::authority::RandomnessRoundReceiver;
-use mys_core::consensus_adapter::ConsensusClient;
-use mys_core::consensus_manager::UpdatableConsensusClient;
-use mys_core::epoch::randomness::RandomnessManager;
-use mys_core::execution_cache::build_execution_cache;
-use mys_core::state_accumulator::StateAccumulatorMetrics;
-use mys_core::storage::RestReadStore;
-use mys_core::traffic_controller::metrics::TrafficControllerMetrics;
-use mys_json_rpc::bridge_api::BridgeReadApi;
-use mys_json_rpc_api::JsonRpcMetrics;
-use mys_network::randomness;
-use mys_rpc_api::subscription::SubscriptionService;
-use mys_rpc_api::RpcMetrics;
-use mys_types::base_types::ConciseableName;
-use mys_types::crypto::RandomnessRound;
-use mys_types::digests::ChainIdentifier;
-use mys_types::executable_transaction::VerifiedExecutableTransaction;
-use mys_types::full_checkpoint_content::CheckpointData;
-use mys_types::messages_consensus::AuthorityCapabilitiesV2;
-use mys_types::messages_consensus::ConsensusTransactionKind;
-use mys_types::mys_system_state::MysSystemState;
-use mys_types::transaction::VerifiedCertificate;
-use mysten_common::debug_fatal;
-use mysten_network::server::MYS_TLS_SERVER_NAME;
+// TODO: Add in_test_configuration to mysten-common
+// use mysten_common::in_test_configuration;
+#[cfg(test)]
+fn in_test_configuration() -> bool { true }
+#[cfg(not(test))]
+fn in_test_configuration() -> bool { false }
 use prometheus::Registry;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt;
@@ -55,27 +31,106 @@ use std::str::FromStr;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Weak};
 use std::time::Duration;
+// TODO: Add ExecutionEnv to mys-core::authority
+// use mys_core::authority::ExecutionEnv;
+// For now, define a stub
+#[derive(Debug, Clone)]
+pub struct ExecutionEnv;
+impl ExecutionEnv {
+    pub fn new() -> Self { Self }
+}
+use mys_core::authority::RandomnessRoundReceiver;
+use mys_core::authority::authority_store_tables::AuthorityPerpetualTablesOptions;
+use mys_core::authority::backpressure::BackpressureManager;
+use mys_core::authority::epoch_start_configuration::EpochFlag;
+use mys_core::authority::execution_time_estimator::ExecutionTimeObserver;
+use mys_core::consensus_adapter::ConsensusClient;
+use mys_core::consensus_manager::UpdatableConsensusClient;
+use mys_core::epoch::randomness::RandomnessManager;
+use mys_core::execution_cache::build_execution_cache;
+// TODO: Add endpoint_manager and validator modules to mys-network
+// use mys_network::endpoint_manager::{AddressSource, EndpointId};
+// use mys_network::validator::server::MYS_TLS_SERVER_NAME;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AddressSource {
+    Committee,
+    Seed,
+    Allowlist,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EndpointId {
+    P2p(mys_types::crypto::NetworkPublicKey),
+}
+pub const MYS_TLS_SERVER_NAME: &str = "mys";
+use mys_types::full_checkpoint_content::Checkpoint;
+
+// TODO: Add execution_scheduler module to mys-core
+// use mys_core::execution_scheduler::SchedulingSource;
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum SchedulingSource {
+    MysticetiFastPath,
+    NonFastPath,
+}
+use mys_core::state_accumulator::StateAccumulatorMetrics;
+use mys_core::storage::RestReadStore;
+// TODO: Create mys_json_rpc crate or use mys-json-rpc-api
+// use mys_json_rpc::bridge_api::BridgeReadApi;
+use mys_json_rpc_api::JsonRpcMetrics;
+use mys_network::randomness;
+use mys_rpc_api::RpcMetrics;
+use mys_rpc_api::ServerVersion;
+use mys_rpc_api::subscription::SubscriptionService;
+use mys_types::base_types::ConciseableName;
+use mys_types::crypto::RandomnessRound;
+use mys_types::digests::{
+    ChainIdentifier, CheckpointDigest, TransactionDigest, TransactionEffectsDigest,
+};
+use mys_types::messages_consensus::AuthorityCapabilitiesV2;
+use mys_types::mys_system_state::MysSystemState;
 use tap::tap::TapFallible;
-use tokio::runtime::Handle;
-use tokio::sync::{broadcast, mpsc, watch, Mutex};
-use tokio::task::{JoinHandle, JoinSet};
+use tokio::sync::oneshot;
+use tokio::sync::{Mutex, broadcast, mpsc, watch};
+use tokio::task::JoinHandle;
 use tower::ServiceBuilder;
+use tracing::{Instrument, error_span, info};
 use tracing::{debug, error, warn};
-use tracing::{error_span, info, Instrument};
+
+// Logs at debug level in test configuration, info level otherwise.
+// JWK logs cause significant volume in tests, but are insignificant in prod,
+// so we keep them at info
+macro_rules! jwk_log {
+    ($($arg:tt)+) => {
+        if in_test_configuration() {
+            debug!($($arg)+);
+        } else {
+            info!($($arg)+);
+        }
+    };
+}
 
 use fastcrypto_zkp::bn254::zk_login::JWK;
 pub use handle::MysNodeHandle;
 use mys_archival::reader::ArchiveReaderBalancer;
-use mys_archival::writer::ArchiveWriter;
+use mys_network::discovery::TrustedPeerChangeEvent;
+use mysten_metrics::{RegistryService, spawn_monitored_task};
+use mysten_service::server_timing::server_timing_middleware;
 use mys_config::node::{DBCheckpointConfig, RunWithRange};
+use mys_config::node::{ForkCrashBehavior, ForkRecoveryConfig};
 use mys_config::node_config_metrics::NodeConfigMetrics;
-use mys_config::object_storage_config::{ObjectStoreConfig, ObjectStoreType};
 use mys_config::{ConsensusConfig, NodeConfig};
 use mys_core::authority::authority_per_epoch_store::AuthorityPerEpochStore;
 use mys_core::authority::authority_store_tables::AuthorityPerpetualTables;
 use mys_core::authority::epoch_start_configuration::EpochStartConfigTrait;
 use mys_core::authority::epoch_start_configuration::EpochStartConfiguration;
-use mys_core::authority_aggregator::{AuthAggMetrics, AuthorityAggregator};
+// TODO: Add submitted_transaction_cache module to mys-core::authority
+// use mys_core::authority::submitted_transaction_cache::SubmittedTransactionCacheMetrics;
+pub struct SubmittedTransactionCacheMetrics;
+impl SubmittedTransactionCacheMetrics {
+    pub fn new(_registry: &prometheus::Registry) -> std::sync::Arc<Self> {
+        std::sync::Arc::new(Self)
+    }
+}
+use mys_core::authority_aggregator::AuthorityAggregator;
 use mys_core::authority_server::{ValidatorService, ValidatorServiceMetrics};
 use mys_core::checkpoints::checkpoint_executor::metrics::CheckpointExecutorMetrics;
 use mys_core::checkpoints::checkpoint_executor::{CheckpointExecutor, StopReason};
@@ -96,57 +151,52 @@ use mys_core::epoch::committee_store::CommitteeStore;
 use mys_core::epoch::consensus_store_pruner::ConsensusStorePruner;
 use mys_core::epoch::epoch_metrics::EpochMetrics;
 use mys_core::epoch::reconfiguration::ReconfigurationInitiator;
+use mys_core::state_accumulator::StateAccumulator;
 use mys_core::jsonrpc_index::IndexStore;
 use mys_core::module_cache_metrics::ResolverMetrics;
 use mys_core::overload_monitor::overload_monitor;
 use mys_core::rpc_index::RpcIndexStore;
 use mys_core::signature_verifier::SignatureVerifierMetrics;
-use mys_core::state_accumulator::StateAccumulator;
 use mys_core::storage::RocksDbStore;
-use mys_core::transaction_orchestrator::TransactiondOrchestrator;
+use mys_core::transaction_orchestrator::TransactionOrchestrator;
 use mys_core::{
     authority::{AuthorityState, AuthorityStore},
     authority_client::NetworkAuthorityClient,
 };
-use mys_json_rpc::coin_api::CoinReadApi;
-use mys_json_rpc::governance_api::GovernanceReadApi;
-use mys_json_rpc::indexer_api::IndexerApi;
-use mys_json_rpc::move_utils::MoveUtils;
-use mys_json_rpc::read_api::ReadApi;
-use mys_json_rpc::transaction_builder_api::TransactionBuilderApi;
-use mys_json_rpc::transaction_execution_api::TransactionExecutionApi;
-use mys_json_rpc::JsonRpcServerBuilder;
+// TODO: Create mys_json_rpc crate or adapt mys-json-rpc-api
+// use mys_json_rpc::JsonRpcServerBuilder;
+// use mys_json_rpc::coin_api::CoinReadApi;
+// use mys_json_rpc::governance_api::GovernanceReadApi;
+// use mys_json_rpc::indexer_api::IndexerApi;
+// use mys_json_rpc::move_utils::MoveUtils;
+// use mys_json_rpc::read_api::ReadApi;
+// use mys_json_rpc::transaction_builder_api::TransactionBuilderApi;
+// use mys_json_rpc::transaction_execution_api::TransactionExecutionApi;
 use mys_macros::fail_point;
 use mys_macros::{fail_point_async, replay_log};
 use mys_network::api::ValidatorServer;
 use mys_network::discovery;
-use mys_network::discovery::TrustedPeerChangeEvent;
+use mys_network::endpoint_manager::EndpointManager;
 use mys_network::state_sync;
-use mys_protocol_config::{Chain, ProtocolConfig};
+use mys_network::validator::server::ServerBuilder;
+use mys_protocol_config::{Chain, ProtocolConfig, ProtocolVersion};
 use mys_snapshot::uploader::StateSnapshotUploader;
 use mys_storage::{
     http_key_value_store::HttpKVStore,
     key_value_store::{FallbackTransactionKVStore, TransactionKeyValueStore},
     key_value_store_metrics::KeyValueStoreMetrics,
 };
-use mys_storage::{FileCompression, StorageFormat};
 use mys_types::base_types::{AuthorityName, EpochId};
 use mys_types::committee::Committee;
 use mys_types::crypto::KeypairTraits;
 use mys_types::error::{MysError, MysResult};
-use mys_types::messages_consensus::{
-    check_total_jwk_size, AuthorityCapabilitiesV1, ConsensusTransaction,
-};
+use mys_types::messages_consensus::{ConsensusTransaction, check_total_jwk_size};
+use mys_types::mys_system_state::MysSystemStateTrait;
 use mys_types::mys_system_state::epoch_start_mys_system_state::EpochStartSystemState;
 use mys_types::mys_system_state::epoch_start_mys_system_state::EpochStartSystemStateTrait;
-use mys_types::mys_system_state::MysSystemStateTrait;
-use mys_types::quorum_driver_types::QuorumDriverEffectsQueueResult;
 use mys_types::supported_protocol_versions::SupportedProtocolVersions;
-use mysten_metrics::{spawn_monitored_task, RegistryService};
-use mysten_network::server::ServerBuilder;
-use mysten_service::server_timing::server_timing_middleware;
-use typed_store::rocks::default_db_options;
 use typed_store::DBMetrics;
+use typed_store::rocks::default_db_options;
 
 use crate::metrics::{GrpcMetrics, MysNodeMetrics};
 
@@ -157,11 +207,9 @@ pub mod metrics;
 pub struct ValidatorComponents {
     validator_server_handle: SpawnOnce,
     validator_overload_monitor_handle: Option<JoinHandle<()>>,
-    consensus_manager: ConsensusManager,
+    consensus_manager: Arc<ConsensusManager>,
     consensus_store_pruner: ConsensusStorePruner,
     consensus_adapter: Arc<ConsensusAdapter>,
-    // Keeping the handle to the checkpoint service tasks to shut them down during reconfiguration.
-    checkpoint_service_tasks: JoinSet<()>,
     checkpoint_metrics: Arc<CheckpointMetrics>,
     mys_tx_validator_metrics: Arc<MysTxValidatorMetrics>,
 }
@@ -176,6 +224,7 @@ pub struct P2pComponents {
 #[cfg(msim)]
 mod simulator {
     use std::sync::atomic::AtomicBool;
+    use mys_types::error::MysErrorKind;
 
     use super::*;
     pub(super) struct SimState {
@@ -208,8 +257,9 @@ mod simulator {
         parse_jwks(
             mys_types::zk_login_util::DEFAULT_JWK_BYTES,
             &OIDCProvider::Twitch,
+            true,
         )
-        .map_err(|_| MysError::JWKRetrievalError)
+        .map_err(|_| MysErrorKind::JWKRetrievalError.into())
     }
 
     thread_local! {
@@ -225,40 +275,44 @@ mod simulator {
     }
 }
 
-use mys_core::authority::authority_store_pruner::ObjectsCompactionFilter;
-use mys_core::{
-    consensus_handler::ConsensusHandlerInitializer, safe_client::SafeClientMetricsBase,
-    validator_tx_finalizer::ValidatorTxFinalizer,
-};
-use mys_types::execution_config_utils::to_binary_config;
 #[cfg(msim)]
 pub use simulator::set_jwk_injector;
 #[cfg(msim)]
 use simulator::*;
+use mys_core::authority::authority_store_pruner::PrunerWatermarks;
+use mys_core::{
+    consensus_handler::ConsensusHandlerInitializer, safe_client::SafeClientMetricsBase,
+};
+
+const DEFAULT_GRPC_CONNECT_TIMEOUT: Duration = Duration::from_secs(60);
 
 pub struct MysNode {
     config: NodeConfig,
     validator_components: Mutex<Option<ValidatorComponents>>,
-    /// The http server responsible for serving JSON-RPC as well as the experimental rest service
-    _http_server: Option<mys_http::ServerHandle>,
+
+    /// The http servers responsible for serving RPC traffic (gRPC and JSON-RPC)
+    #[allow(unused)]
+    http_servers: HttpServers,
+
     state: Arc<AuthorityState>,
-    transaction_orchestrator: Option<Arc<TransactiondOrchestrator<NetworkAuthorityClient>>>,
+    transaction_orchestrator: Option<Arc<TransactionOrchestrator<NetworkAuthorityClient>>>,
     registry_service: RegistryService,
     metrics: Arc<MysNodeMetrics>,
+    checkpoint_metrics: Arc<CheckpointMetrics>,
 
     _discovery: discovery::Handle,
-    _connection_monitor_handle: consensus_core::ConnectionMonitorHandle,
+    _connection_monitor_handle: mysten_network::anemo_connection_monitor::ConnectionMonitorHandle,
     state_sync_handle: state_sync::Handle,
     randomness_handle: randomness::Handle,
     checkpoint_store: Arc<CheckpointStore>,
-    accumulator: Mutex<Option<Arc<StateAccumulator>>>,
+    global_state_hasher: Mutex<Option<Arc<GlobalStateHasher>>>,
     connection_monitor_status: Arc<ConnectionMonitorStatus>,
 
     /// Broadcast channel to send the starting system state for the next epoch.
     end_of_epoch_channel: broadcast::Sender<MysSystemState>,
 
-    /// Broadcast channel to notify state-sync for new validator peers.
-    trusted_peer_change_tx: watch::Sender<TrustedPeerChangeEvent>,
+    /// EndpointManager for updating peer network addresses.
+    endpoint_manager: EndpointManager,
 
     backpressure_manager: Arc<BackpressureManager>,
 
@@ -266,8 +320,6 @@ pub struct MysNode {
 
     #[cfg(msim)]
     sim_state: SimState,
-
-    _state_archive_handle: Option<broadcast::Sender<()>>,
 
     _state_snapshot_uploader_handle: Option<broadcast::Sender<()>>,
     // Channel to allow signaling upstream to shutdown mys-node
@@ -279,7 +331,7 @@ pub struct MysNode {
     // update will automatically propagate to other uses.
     auth_agg: Arc<ArcSwap<AuthorityAggregator<NetworkAuthorityClient>>>,
 
-    subscription_service_checkpoint_sender: Option<tokio::sync::mpsc::Sender<CheckpointData>>,
+    subscription_service_checkpoint_sender: Option<tokio::sync::mpsc::Sender<mys_types::full_checkpoint_content::CheckpointData>>,
 }
 
 impl fmt::Debug for MysNode {
@@ -296,9 +348,13 @@ impl MysNode {
     pub async fn start(
         config: NodeConfig,
         registry_service: RegistryService,
-        custom_rpc_runtime: Option<Handle>,
     ) -> Result<Arc<MysNode>> {
-        Self::start_async(config, registry_service, custom_rpc_runtime, "unknown").await
+        Self::start_async(
+            config,
+            registry_service,
+            ServerVersion::new("mys-node", "unknown"),
+        )
+        .await
     }
 
     fn start_jwk_updater(
@@ -386,7 +442,7 @@ impl MysNode {
                     // just best-effort to reduce unneeded submissions.
                     let mut seen = HashSet::new();
                     loop {
-                        info!("fetching JWK for provider {:?}", p);
+                        jwk_log!("fetching JWK for provider {:?}", p);
                         metrics.jwk_requests.with_label_values(&[&provider_str]).inc();
                         match Self::fetch_jwks(authority, &p).await {
                             Err(e) => {
@@ -419,7 +475,7 @@ impl MysNode {
                                 }
 
                                 for (id, jwk) in keys.into_iter() {
-                                    info!("Submitting JWK to consensus: {:?}", id);
+                                    jwk_log!("Submitting JWK to consensus: {:?}", id);
 
                                     let txn = ConsensusTransaction::new_jwk_fetched(authority, id, jwk);
                                     consensus_adapter.submit(txn, None, &epoch_store)
@@ -439,8 +495,7 @@ impl MysNode {
     pub async fn start_async(
         config: NodeConfig,
         registry_service: RegistryService,
-        custom_rpc_runtime: Option<Handle>,
-        software_version: &'static str,
+        server_version: ServerVersion,
     ) -> Result<Arc<MysNode>> {
         NodeConfigMetrics::new(&registry_service.default_registry()).record_metrics(&config);
         let mut config = config.clone();
@@ -464,6 +519,9 @@ impl MysNode {
         // Initialize metrics to track db usage before creating any stores
         DBMetrics::init(registry_service.clone());
 
+        // Initialize db sync-to-disk setting from config (falls back to env var if not set)
+        typed_store::init_write_sync(config.enable_db_sync_to_disk);
+
         // Initialize Mysten metrics.
         mysten_metrics::init_metrics(&prometheus_registry);
         // Unsupported (because of the use of static variable) and unnecessary in simtests.
@@ -473,41 +531,43 @@ impl MysNode {
         let genesis = config.genesis()?.clone();
 
         let secret = Arc::pin(config.protocol_key_pair().copy());
-        let genesis_committee = genesis.committee()?;
+        let genesis_committee = genesis.committee();
         let committee_store = Arc::new(CommitteeStore::new(
             config.db_path().join("epochs"),
             &genesis_committee,
             None,
         ));
 
-        let mut pruner_db = None;
-        if config
-            .authority_store_pruning_config
-            .enable_compaction_filter
-        {
-            pruner_db = Some(Arc::new(AuthorityPrunerTables::open(
-                &config.db_path().join("store"),
-            )));
-        }
-        let compaction_filter = pruner_db
-            .clone()
-            .map(|db| ObjectsCompactionFilter::new(db, &prometheus_registry));
+        let pruner_watermarks = Arc::new(PrunerWatermarks::default());
+        let checkpoint_store = CheckpointStore::new(
+            &config.db_path().join("checkpoints"),
+            pruner_watermarks.clone(),
+        );
+        let checkpoint_metrics = CheckpointMetrics::new(&registry_service.default_registry());
+
+        Self::check_and_recover_forks(
+            &checkpoint_store,
+            &checkpoint_metrics,
+            is_validator,
+            config.fork_recovery.as_ref(),
+        )
+        .await?;
 
         // By default, only enable write stall on validators for perpetual db.
         let enable_write_stall = config.enable_db_write_stall.unwrap_or(is_validator);
         let perpetual_tables_options = AuthorityPerpetualTablesOptions {
             enable_write_stall,
-            compaction_filter,
+            is_validator,
         };
         let perpetual_tables = Arc::new(AuthorityPerpetualTables::open(
             &config.db_path().join("store"),
             Some(perpetual_tables_options),
+            Some(pruner_watermarks.epoch_id.clone()),
         ));
         let is_genesis = perpetual_tables
             .database_is_empty()
             .expect("Database read should not fail at init.");
 
-        let checkpoint_store = CheckpointStore::new(&config.db_path().join("checkpoints"));
         let backpressure_manager =
             BackpressureManager::new_from_checkpoint_store(&checkpoint_store);
 
@@ -533,15 +593,19 @@ impl MysNode {
 
         let auth_agg = {
             let safe_client_metrics_base = SafeClientMetricsBase::new(&prometheus_registry);
-            let auth_agg_metrics = Arc::new(AuthAggMetrics::new(&prometheus_registry));
             Arc::new(ArcSwap::new(Arc::new(
                 AuthorityAggregator::new_from_epoch_start_state(
                     epoch_start_configuration.epoch_start_state(),
                     &committee_store,
                     safe_client_metrics_base,
-                    auth_agg_metrics,
                 ),
             )))
+        };
+
+        let chain_id = ChainIdentifier::from(*genesis.checkpoint().digest());
+        let chain = match config.chain_override_for_testing {
+            Some(chain) => chain,
+            None => ChainIdentifier::from(*genesis.checkpoint().digest()).chain(),
         };
 
         let epoch_options = default_db_options().optimize_db_for_write_throughput(4);
@@ -557,8 +621,15 @@ impl MysNode {
             cache_metrics,
             signature_verifier_metrics,
             &config.expensive_safety_check_config,
-            ChainIdentifier::from(*genesis.checkpoint().digest()),
-        );
+            (chain_id, chain),
+            checkpoint_store
+                .get_highest_executed_checkpoint_seq_number()
+                .expect("checkpoint store read cannot fail")
+                .unwrap_or(0),
+            Arc::new(SubmittedTransactionCacheMetrics::new(
+                &registry_service.default_registry(),
+            )),
+        )?;
 
         info!("created epoch store");
 
@@ -593,8 +664,6 @@ impl MysNode {
             );
         }
 
-        info!("creating checkpoint store");
-
         checkpoint_store.insert_genesis_checkpoint(
             genesis.checkpoint(),
             genesis.checkpoint_contents().clone(),
@@ -609,7 +678,7 @@ impl MysNode {
         );
 
         let index_store = if is_full_node && config.enable_index_processing {
-            info!("creating index store");
+            info!("creating jsonrpc index store");
             Some(Arc::new(IndexStore::new(
                 config.db_path().join("indexes"),
                 &prometheus_registry,
@@ -617,33 +686,36 @@ impl MysNode {
                     .protocol_config()
                     .max_move_identifier_len_as_option(),
                 config.remove_deprecated_tables,
-                &store,
             )))
         } else {
             None
         };
 
         let rpc_index = if is_full_node && config.rpc().is_some_and(|rpc| rpc.enable_indexing()) {
-            Some(Arc::new(RpcIndexStore::new(
-                &config.db_path(),
-                &store,
-                &checkpoint_store,
-                &epoch_store,
-                &cache_traits.backing_package_store,
-            )))
+            info!("creating rpc index store");
+            Some(Arc::new(
+                RpcIndexStore::new(
+                    &config.db_path(),
+                    &store,
+                    &checkpoint_store,
+                    &epoch_store,
+                    &cache_traits.backing_package_store,
+                    pruner_watermarks.checkpoint_id.clone(),
+                    config.rpc().cloned().unwrap_or_default(),
+                )
+                .await,
+            ))
         } else {
             None
         };
 
-        let chain_identifier = ChainIdentifier::from(*genesis.checkpoint().digest());
+        let chain_identifier = epoch_store.get_chain_identifier();
 
         info!("creating archive reader");
-        // Create network
-        // TODO only configure validators as seed/preferred peers for validators and not for
-        // fullnodes once we've had a chance to re-work fullnode configuration generation.
         let archive_readers =
             ArchiveReaderBalancer::new(config.archive_reader_config(), &prometheus_registry)?;
         let (trusted_peer_change_tx, trusted_peer_change_rx) = watch::channel(Default::default());
+        // Create network
         let (randomness_tx, randomness_rx) = mpsc::channel(
             config
                 .p2p_config
@@ -668,20 +740,21 @@ impl MysNode {
             &prometheus_registry,
         )?;
 
-        // We must explicitly send this instead of relying on the initial value to trigger
-        // watch value change, so that state-sync is able to process it.
-        send_trusted_peer_change(
-            &config,
-            &trusted_peer_change_tx,
-            epoch_store.epoch_start_state(),
-        )
-        .expect("Initial trusted peers must be set");
+        let endpoint_manager = EndpointManager::new(discovery_handle.clone());
 
-        info!("start state archival");
-        // Start archiving local state to remote store
-        let state_archive_handle =
-            Self::start_state_archival(&config, &prometheus_registry, state_sync_store.clone())
-                .await?;
+        // Inject configured peer address overrides.
+        for peer in &config.p2p_config.peer_address_overrides {
+            endpoint_manager
+                .update_endpoint(
+                    EndpointId::P2p(peer.peer_id),
+                    AddressSource::Config,
+                    peer.addresses.clone(),
+                )
+                .expect("Updating peer address overrides should not fail");
+        }
+
+        // Send initial peer addresses to the p2p network.
+        update_peer_addresses(&config, &endpoint_manager, epoch_store.epoch_start_state());
 
         info!("start snapshot upload");
         // Start uploading state snapshot to remote store
@@ -711,14 +784,6 @@ impl MysNode {
         }
 
         let authority_name = config.protocol_public_key();
-        let validator_tx_finalizer =
-            config
-                .enable_validator_tx_finalizer
-                .then_some(Arc::new(ValidatorTxFinalizer::new(
-                    auth_agg.clone(),
-                    authority_name,
-                    &prometheus_registry,
-                )));
 
         info!("create authority state");
         let state = AuthorityState::new(
@@ -736,11 +801,10 @@ impl MysNode {
             genesis.objects(),
             &db_checkpoint_config,
             config.clone(),
-            config.indirect_objects_threshold,
-            archive_readers,
-            validator_tx_finalizer,
             chain_identifier,
-            pruner_db,
+            config.policy_config.clone(),
+            config.firewall_config.clone(),
+            pruner_watermarks,
         )
         .await;
         // ensure genesis txn was executed
@@ -755,15 +819,15 @@ impl MysNode {
                     ),
                 );
             state
-                .try_execute_immediately(&transaction, None, &epoch_store)
+                .try_execute_immediately(
+                    &transaction,
+                    ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+                    &epoch_store,
+                )
                 .instrument(span)
                 .await
                 .unwrap();
         }
-
-        checkpoint_store
-            .reexecute_local_checkpoints(&state, &epoch_store)
-            .await;
 
         // Start the loop that receives new randomness and generates transactions for it.
         RandomnessRoundReceiver::spawn(state.clone(), randomness_rx);
@@ -771,45 +835,43 @@ impl MysNode {
         if config
             .expensive_safety_check_config
             .enable_secondary_index_checks()
+            && let Some(indexes) = state.indexes.clone()
         {
-            if let Some(indexes) = state.indexes.clone() {
-                mys_core::verify_indexes::verify_indexes(
-                    state.get_accumulator_store().as_ref(),
-                    indexes,
-                )
-                .expect("secondary indexes are inconsistent");
-            }
+            mys_core::verify_indexes::verify_indexes(
+                state.get_accumulator_store().as_ref(),
+                indexes,
+            )
+            .expect("secondary indexes are inconsistent");
         }
 
         let (end_of_epoch_channel, end_of_epoch_receiver) =
             broadcast::channel(config.end_of_epoch_broadcast_channel_capacity);
 
         let transaction_orchestrator = if is_full_node && run_with_range.is_none() {
-            Some(Arc::new(
-                TransactiondOrchestrator::new_with_auth_aggregator(
-                    auth_agg.load_full(),
-                    state.clone(),
-                    end_of_epoch_receiver,
-                    &config.db_path(),
-                    &prometheus_registry,
-                ),
-            ))
+            Some(Arc::new(TransactionOrchestrator::new_with_auth_aggregator(
+                auth_agg.load_full(),
+                state.clone(),
+                end_of_epoch_receiver,
+                &config.db_path(),
+                &prometheus_registry,
+                &config,
+            )))
         } else {
             None
         };
 
-        let (http_server, subscription_service_checkpoint_sender) = build_http_server(
+        let (http_servers, subscription_service_checkpoint_sender) = build_http_servers(
             state.clone(),
             state_sync_store,
             &transaction_orchestrator.clone(),
             &config,
             &prometheus_registry,
-            custom_rpc_runtime,
-            software_version,
+            server_version,
         )
         .await?;
 
-        let accumulator = Arc::new(StateAccumulator::new(
+        // TODO: Replace with GlobalStateHasher once implemented
+        let global_state_hasher = Arc::new(StateAccumulator::new(
             cache_traits.accumulator_store.clone(),
             StateAccumulatorMetrics::new(&prometheus_registry),
         ));
@@ -818,18 +880,19 @@ impl MysNode {
             .epoch_start_state()
             .get_authority_names_to_peer_ids();
 
-        let network_connection_metrics = consensus_core::QuinnConnectionMetrics::new(
+        let network_connection_metrics = mysten_network::quinn_metrics::QuinnConnectionMetrics::new(
             "mys",
             &registry_service.default_registry(),
         );
 
         let authority_names_to_peer_ids = ArcSwap::from_pointee(authority_names_to_peer_ids);
 
-        let connection_monitor_handle = consensus_core::AnemoConnectionMonitor::spawn(
-            p2p_network.downgrade(),
-            Arc::new(network_connection_metrics),
-            known_peers,
-        );
+        let connection_monitor_handle =
+            mysten_network::anemo_connection_monitor::AnemoConnectionMonitor::spawn(
+                p2p_network.downgrade(),
+                Arc::new(network_connection_metrics),
+                known_peers,
+            );
 
         let connection_monitor_status = ConnectionMonitorStatus {
             connection_statuses: connection_monitor_handle.connection_statuses(),
@@ -839,30 +902,38 @@ impl MysNode {
         let connection_monitor_status = Arc::new(connection_monitor_status);
         let mys_node_metrics = Arc::new(MysNodeMetrics::new(&registry_service.default_registry()));
 
+        mys_node_metrics
+            .binary_max_protocol_version
+            .set(ProtocolVersion::MAX.as_u64() as i64);
+        mys_node_metrics
+            .configured_max_protocol_version
+            .set(config.supported_protocol_versions.unwrap().max.as_u64() as i64);
+
         let validator_components = if state.is_validator(&epoch_store) {
-            let (components, _) = futures::join!(
-                Self::construct_validator_components(
-                    config.clone(),
-                    state.clone(),
-                    committee,
-                    epoch_store.clone(),
-                    checkpoint_store.clone(),
-                    state_sync_handle.clone(),
-                    randomness_handle.clone(),
-                    Arc::downgrade(&accumulator),
-                    backpressure_manager.clone(),
-                    connection_monitor_status.clone(),
-                    &registry_service,
-                    mys_node_metrics.clone(),
-                ),
-                Self::reexecute_pending_consensus_certs(&epoch_store, &state,)
-            );
-            let mut components = components?;
+            let mut components = Self::construct_validator_components(
+                config.clone(),
+                state.clone(),
+                committee,
+                epoch_store.clone(),
+                checkpoint_store.clone(),
+                state_sync_handle.clone(),
+                randomness_handle.clone(),
+                Arc::downgrade(&global_state_hasher),
+                backpressure_manager.clone(),
+                connection_monitor_status.clone(),
+                &registry_service,
+                mys_node_metrics.clone(),
+                checkpoint_metrics.clone(),
+            )
+            .await?;
 
             components.consensus_adapter.submit_recovered(&epoch_store);
 
             // Start the gRPC server
-            components.validator_server_handle = components.validator_server_handle.start();
+            components.validator_server_handle = components.validator_server_handle.start().await;
+
+            // Set the consensus address updater so that we can update the consensus peer addresses when requested.
+            endpoint_manager.set_consensus_address_updater(components.consensus_manager.clone());
 
             Some(components)
         } else {
@@ -875,21 +946,22 @@ impl MysNode {
         let node = Self {
             config,
             validator_components: Mutex::new(validator_components),
-            _http_server: http_server,
+            http_servers,
             state,
             transaction_orchestrator,
             registry_service,
             metrics: mys_node_metrics,
+            checkpoint_metrics,
 
             _discovery: discovery_handle,
             _connection_monitor_handle: connection_monitor_handle,
             state_sync_handle,
             randomness_handle,
             checkpoint_store,
-            accumulator: Mutex::new(Some(accumulator)),
+            global_state_hasher: Mutex::new(Some(global_state_hasher)),
             end_of_epoch_channel,
             connection_monitor_status,
-            trusted_peer_change_tx,
+            endpoint_manager,
             backpressure_manager,
 
             _db_checkpoint_handle: db_checkpoint_handle,
@@ -897,7 +969,6 @@ impl MysNode {
             #[cfg(msim)]
             sim_state: Default::default(),
 
-            _state_archive_handle: state_archive_handle,
             _state_snapshot_uploader_handle: state_snapshot_handle,
             shutdown_channel_tx: shutdown_channel,
 
@@ -909,7 +980,7 @@ impl MysNode {
         let node = Arc::new(node);
         let node_copy = node.clone();
         spawn_monitored_task!(async move {
-            let result = Self::monitor_reconfiguration(node_copy).await;
+            let result = Self::monitor_reconfiguration(node_copy, epoch_store).await;
             if let Err(error) = result {
                 warn!("Reconfiguration finished with error {:?}", error);
             }
@@ -966,33 +1037,6 @@ impl MysNode {
     pub async fn close_epoch_for_testing(&self) -> MysResult {
         let epoch_store = self.state.epoch_store_for_testing();
         self.close_epoch(&epoch_store).await
-    }
-
-    async fn start_state_archival(
-        config: &NodeConfig,
-        prometheus_registry: &Registry,
-        state_sync_store: RocksDbStore,
-    ) -> Result<Option<tokio::sync::broadcast::Sender<()>>> {
-        if let Some(remote_store_config) = &config.state_archive_write_config.object_store_config {
-            let local_store_config = ObjectStoreConfig {
-                object_store: Some(ObjectStoreType::File),
-                directory: Some(config.archive_path()),
-                ..Default::default()
-            };
-            let archive_writer = ArchiveWriter::new(
-                local_store_config,
-                remote_store_config.clone(),
-                FileCompression::Zstd,
-                StorageFormat::Blob,
-                Duration::from_secs(600),
-                256 * 1024 * 1024,
-                prometheus_registry,
-            )
-            .await?;
-            Ok(Some(archive_writer.start(state_sync_store).await?))
-        } else {
-            Ok(None)
-        }
     }
 
     fn start_state_snapshot(
@@ -1123,9 +1167,12 @@ impl MysNode {
             let routes = routes.merge(randomness_router);
 
             let inbound_network_metrics =
-                consensus_core::NetworkRouteMetrics::new("mys", "inbound", prometheus_registry);
-            let outbound_network_metrics =
-                consensus_core::NetworkRouteMetrics::new("mys", "outbound", prometheus_registry);
+                mysten_network::metrics::NetworkMetrics::new("mys", "inbound", prometheus_registry);
+            let outbound_network_metrics = mysten_network::metrics::NetworkMetrics::new(
+                "mys",
+                "outbound",
+                prometheus_registry,
+            );
 
             let service = ServiceBuilder::new()
                 .layer(
@@ -1134,7 +1181,7 @@ impl MysNode {
                         .on_failure(DefaultOnFailure::new().level(tracing::Level::WARN)),
                 )
                 .layer(CallbackLayer::new(
-                    consensus_core::MetricsMakeCallbackHandler::new(
+                    mysten_network::metrics::MetricsMakeCallbackHandler::new(
                         Arc::new(inbound_network_metrics),
                         config.p2p_config.excessive_message_size(),
                     ),
@@ -1148,7 +1195,7 @@ impl MysNode {
                         .on_failure(DefaultOnFailure::new().level(tracing::Level::WARN)),
                 )
                 .layer(CallbackLayer::new(
-                    consensus_core::MetricsMakeCallbackHandler::new(
+                    mysten_network::metrics::MetricsMakeCallbackHandler::new(
                         Arc::new(outbound_network_metrics),
                         config.p2p_config.excessive_message_size(),
                     ),
@@ -1237,11 +1284,12 @@ impl MysNode {
         checkpoint_store: Arc<CheckpointStore>,
         state_sync_handle: state_sync::Handle,
         randomness_handle: randomness::Handle,
-        accumulator: Weak<StateAccumulator>,
+        global_state_hasher: Weak<GlobalStateHasher>,
         backpressure_manager: Arc<BackpressureManager>,
         connection_monitor_status: Arc<ConnectionMonitorStatus>,
         registry_service: &RegistryService,
         mys_node_metrics: Arc<MysNodeMetrics>,
+        checkpoint_metrics: Arc<CheckpointMetrics>,
     ) -> Result<ValidatorComponents> {
         let mut config_clone = config.clone();
         let consensus_config = config_clone
@@ -1259,8 +1307,12 @@ impl MysNode {
             epoch_store.protocol_config().clone(),
             client.clone(),
         ));
-        let consensus_manager =
-            ConsensusManager::new(&config, consensus_config, registry_service, client);
+        let consensus_manager = Arc::new(ConsensusManager::new(
+            &config,
+            consensus_config,
+            registry_service,
+            client,
+        ));
 
         // This only gets started up once, not on every epoch. (Make call to remove every epoch.)
         let consensus_store_pruner = ConsensusStorePruner::new(
@@ -1270,7 +1322,6 @@ impl MysNode {
             &registry_service.default_registry(),
         );
 
-        let checkpoint_metrics = CheckpointMetrics::new(&registry_service.default_registry());
         let mys_tx_validator_metrics =
             MysTxValidatorMetrics::new(&registry_service.default_registry());
 
@@ -1310,7 +1361,7 @@ impl MysNode {
             randomness_handle,
             consensus_manager,
             consensus_store_pruner,
-            accumulator,
+            global_state_hasher,
             backpressure_manager,
             validator_server_handle,
             validator_overload_monitor_handle,
@@ -1329,9 +1380,9 @@ impl MysNode {
         epoch_store: Arc<AuthorityPerEpochStore>,
         state_sync_handle: state_sync::Handle,
         randomness_handle: randomness::Handle,
-        consensus_manager: ConsensusManager,
+        consensus_manager: Arc<ConsensusManager>,
         consensus_store_pruner: ConsensusStorePruner,
-        accumulator: Weak<StateAccumulator>,
+        state_hasher: Weak<GlobalStateHasher>,
         backpressure_manager: Arc<BackpressureManager>,
         validator_server_handle: SpawnOnce,
         validator_overload_monitor_handle: Option<JoinHandle<()>>,
@@ -1342,11 +1393,11 @@ impl MysNode {
         let checkpoint_service = Self::build_checkpoint_service(
             config,
             consensus_adapter.clone(),
-            checkpoint_store,
+            checkpoint_store.clone(),
             epoch_store.clone(),
             state.clone(),
             state_sync_handle,
-            accumulator,
+            state_hasher,
             checkpoint_metrics.clone(),
         );
 
@@ -1373,9 +1424,12 @@ impl MysNode {
         }
 
         ExecutionTimeObserver::spawn(
-            &epoch_store,
+            epoch_store.clone(),
             Box::new(consensus_adapter.clone()),
-            config.local_execution_time_channel_capacity,
+            config
+                .execution_time_observer_config
+                .clone()
+                .unwrap_or_default(),
         );
 
         let throughput_calculator = Arc::new(ConsensusThroughputCalculator::new(
@@ -1397,27 +1451,47 @@ impl MysNode {
             state.clone(),
             checkpoint_service.clone(),
             epoch_store.clone(),
+            consensus_adapter.clone(),
             low_scoring_authorities,
             throughput_calculator,
             backpressure_manager,
         );
 
-        consensus_manager
-            .start(
-                config,
-                epoch_store.clone(),
-                consensus_handler_initializer,
-                MysTxValidator::new(
-                    state.clone(),
-                    consensus_adapter.clone(),
-                    checkpoint_service.clone(),
-                    state.transaction_manager().clone(),
-                    mys_tx_validator_metrics.clone(),
-                ),
-            )
-            .await;
+        info!("Starting consensus manager asynchronously");
 
-        let checkpoint_service_tasks = checkpoint_service.spawn().await;
+        // Spawn consensus startup asynchronously to avoid blocking other components
+        tokio::spawn({
+            let config = config.clone();
+            let epoch_store = epoch_store.clone();
+            let mys_tx_validator = MysTxValidator::new(
+                state.clone(),
+                epoch_store.clone(),
+                checkpoint_service.clone(),
+                mys_tx_validator_metrics.clone(),
+            );
+            let consensus_manager = consensus_manager.clone();
+            async move {
+                consensus_manager
+                    .start(
+                        &config,
+                        epoch_store,
+                        consensus_handler_initializer,
+                        mys_tx_validator,
+                    )
+                    .await;
+            }
+        });
+        let replay_waiter = consensus_manager.replay_waiter();
+
+        info!("Spawning checkpoint service");
+        let replay_waiter = if std::env::var("DISABLE_REPLAY_WAITER").is_ok() {
+            None
+        } else {
+            Some(replay_waiter)
+        };
+        checkpoint_service
+            .spawn(epoch_store.clone(), replay_waiter)
+            .await;
 
         if epoch_store.authenticator_state_enabled() {
             Self::start_jwk_updater(
@@ -1435,7 +1509,6 @@ impl MysNode {
             consensus_manager,
             consensus_store_pruner,
             consensus_adapter,
-            checkpoint_service_tasks,
             checkpoint_metrics,
             mys_tx_validator_metrics,
         })
@@ -1448,7 +1521,7 @@ impl MysNode {
         epoch_store: Arc<AuthorityPerEpochStore>,
         state: Arc<AuthorityState>,
         state_sync_handle: state_sync::Handle,
-        accumulator: Weak<StateAccumulator>,
+        state_hasher: Weak<GlobalStateHasher>,
         checkpoint_metrics: Arc<CheckpointMetrics>,
     ) -> Arc<CheckpointService> {
         let epoch_start_timestamp_ms = epoch_store.epoch_start_state().epoch_start_timestamp_ms();
@@ -1480,7 +1553,7 @@ impl MysNode {
             checkpoint_store,
             epoch_store,
             state.get_transaction_cache_reader().clone(),
-            accumulator,
+            state_hasher,
             checkpoint_output,
             Box::new(certified_checkpoint_output),
             checkpoint_metrics,
@@ -1524,12 +1597,13 @@ impl MysNode {
             state.clone(),
             consensus_adapter,
             Arc::new(ValidatorServiceMetrics::new(prometheus_registry)),
-            TrafficControllerMetrics::new(prometheus_registry),
-            config.policy_config.clone(),
-            config.firewall_config.clone(),
+            config.policy_config.clone().map(|p| p.client_id_source),
         );
 
         let mut server_conf = mysten_network::config::Config::new();
+        server_conf.connect_timeout = Some(DEFAULT_GRPC_CONNECT_TIMEOUT);
+        server_conf.http2_keepalive_interval = Some(DEFAULT_GRPC_CONNECT_TIMEOUT);
+        server_conf.http2_keepalive_timeout = Some(DEFAULT_GRPC_CONNECT_TIMEOUT);
         server_conf.global_concurrency_limit = config.grpc_concurrency_limit;
         server_conf.load_shed = config.grpc_load_shed;
         let mut server_builder =
@@ -1541,75 +1615,24 @@ impl MysNode {
             config.network_key_pair().copy().private(),
             MYS_TLS_SERVER_NAME.to_string(),
         );
-        let server = server_builder
-            .bind(config.network_address(), Some(tls_config))
-            .await
-            .map_err(|err| anyhow!(err.to_string()))?;
-        let local_addr = server.local_addr();
-        info!("Listening to traffic on {local_addr}");
 
-        Ok(SpawnOnce::new(server.serve().map_err(Into::into)))
-    }
+        let network_address = config.network_address().clone();
 
-    async fn reexecute_pending_consensus_certs(
-        epoch_store: &Arc<AuthorityPerEpochStore>,
-        state: &Arc<AuthorityState>,
-    ) {
-        let pending_consensus_certificates = epoch_store
-            .get_all_pending_consensus_transactions()
-            .into_iter()
-            .filter_map(|tx| {
-                match tx.kind {
-                    // shared object txns will be re-executed by consensus replay
-                    ConsensusTransactionKind::CertifiedTransaction(tx)
-                        if !tx.contains_shared_object() =>
-                    {
-                        let tx = *tx;
-                        // we only need to re-execute if we previously signed the effects (which indicates we
-                        // returned the effects to a client).
-                        if let Some(fx_digest) = epoch_store
-                            .get_signed_effects_digest(tx.digest())
-                            .expect("db error")
-                        {
-                            // new_unchecked is safe because we never submit a transaction to consensus
-                            // without verifying it
-                            let tx = VerifiedExecutableTransaction::new_from_certificate(
-                                VerifiedCertificate::new_unchecked(tx),
-                            );
-                            Some((tx, fx_digest))
-                        } else {
-                            None
-                        }
-                    }
-                    _ => None,
-                }
-            })
-            .collect::<Vec<_>>();
+        let (ready_tx, ready_rx) = oneshot::channel();
 
-        let digests = pending_consensus_certificates
-            .iter()
-            .map(|(tx, _)| *tx.digest())
-            .collect::<Vec<_>>();
-
-        info!("reexecuting pending consensus certificates: {:?}", digests);
-
-        state.enqueue_with_expected_effects_digest(pending_consensus_certificates, epoch_store);
-
-        // If this times out, the validator will still almost certainly start up fine. But, it is
-        // possible that it may temporarily "forget" about transactions that it had previously
-        // executed. This could confuse clients in some circumstances. However, the transactions
-        // are still in pending_consensus_certificates, so we cannot lose any finality guarantees.
-        if tokio::time::timeout(
-            std::time::Duration::from_secs(10),
-            state
-                .get_transaction_cache_reader()
-                .notify_read_executed_effects_digests(&digests),
-        )
-        .await
-        .is_err()
-        {
-            debug_fatal!("Timed out waiting for effects digests to be executed");
-        }
+        Ok(SpawnOnce::new(ready_rx, async move {
+            let server = server_builder
+                .bind(&network_address, Some(tls_config))
+                .await
+                .unwrap_or_else(|err| panic!("Failed to bind to {network_address}: {err}"));
+            let local_addr = server.local_addr();
+            info!("Listening to traffic on {local_addr}");
+            ready_tx.send(()).unwrap();
+            if let Err(err) = server.serve().await {
+                info!("Server stopped: {err}");
+            }
+            info!("Server stopped");
+        }))
     }
 
     pub fn state(&self) -> Arc<AuthorityState> {
@@ -1631,9 +1654,8 @@ impl MysNode {
     }
     */
 
-    /// Clone an AuthorityAggregator currently used in this node's
-    /// QuorumDriver, if the node is a fullnode. After reconfig,
-    /// QuorumDriver builds a new AuthorityAggregator. The caller
+    /// Clone an AuthorityAggregator currently used in this node, if the node is a fullnode.
+    /// After reconfig, Transaction Driver builds a new AuthorityAggregator. The caller
     /// of this function will mostly likely want to call this again
     /// to get a fresh one.
     pub fn clone_authority_aggregator(
@@ -1646,33 +1668,31 @@ impl MysNode {
 
     pub fn transaction_orchestrator(
         &self,
-    ) -> Option<Arc<TransactiondOrchestrator<NetworkAuthorityClient>>> {
+    ) -> Option<Arc<TransactionOrchestrator<NetworkAuthorityClient>>> {
         self.transaction_orchestrator.clone()
     }
 
-    pub fn subscribe_to_transaction_orchestrator_effects(
-        &self,
-    ) -> Result<tokio::sync::broadcast::Receiver<QuorumDriverEffectsQueueResult>> {
-        self.transaction_orchestrator
-            .as_ref()
-            .map(|to| to.subscribe_to_effects_queue())
-            .ok_or_else(|| anyhow::anyhow!("Transaction Orchestrator is not enabled in this node."))
-    }
-
     /// This function awaits the completion of checkpoint execution of the current epoch,
-    /// after which it iniitiates reconfiguration of the entire system.
-    pub async fn monitor_reconfiguration(self: Arc<Self>) -> Result<()> {
+    /// after which it initiates reconfiguration of the entire system.
+    pub async fn monitor_reconfiguration(
+        self: Arc<Self>,
+        mut epoch_store: Arc<AuthorityPerEpochStore>,
+    ) -> Result<()> {
         let checkpoint_executor_metrics =
             CheckpointExecutorMetrics::new(&self.registry_service.default_registry());
 
         loop {
-            let mut accumulator_guard = self.accumulator.lock().await;
-            let accumulator = accumulator_guard.take().unwrap();
-            let mut checkpoint_executor = CheckpointExecutor::new(
-                self.state_sync_handle.subscribe_to_synced_checkpoints(),
+            let mut hasher_guard = self.global_state_hasher.lock().await;
+            let hasher = hasher_guard.take().unwrap();
+            info!(
+                "Creating checkpoint executor for epoch {}",
+                epoch_store.epoch()
+            );
+            let checkpoint_executor = CheckpointExecutor::new(
+                epoch_store.clone(),
                 self.checkpoint_store.clone(),
                 self.state.clone(),
-                accumulator.clone(),
+                hasher.clone(),
                 self.backpressure_manager.clone(),
                 self.config.checkpoint_executor_config.clone(),
                 checkpoint_executor_metrics.clone(),
@@ -1683,49 +1703,68 @@ impl MysNode {
 
             let cur_epoch_store = self.state.load_epoch_store_one_call_per_task();
 
+            // Update the current protocol version metric.
+            self.metrics
+                .current_protocol_version
+                .set(cur_epoch_store.protocol_config().version.as_u64() as i64);
+
             // Advertise capabilities to committee, if we are a validator.
             if let Some(components) = &*self.validator_components.lock().await {
                 // TODO: without this sleep, the consensus message is not delivered reliably.
                 tokio::time::sleep(Duration::from_millis(1)).await;
 
                 let config = cur_epoch_store.protocol_config();
-                let binary_config = to_binary_config(config);
-                let transaction = if config.authority_capabilities_v2() {
-                    ConsensusTransaction::new_capability_notification_v2(
-                        AuthorityCapabilitiesV2::new(
-                            self.state.name,
-                            cur_epoch_store.get_chain_identifier().chain(),
-                            self.config
-                                .supported_protocol_versions
-                                .expect("Supported versions should be populated")
-                                // no need to send digests of versions less than the current version
-                                .truncate_below(config.version),
-                            self.state
-                                .get_available_system_packages(&binary_config)
-                                .await,
-                        ),
-                    )
-                } else {
-                    ConsensusTransaction::new_capability_notification(AuthorityCapabilitiesV1::new(
+                let mut supported_protocol_versions = self
+                    .config
+                    .supported_protocol_versions
+                    .expect("Supported versions should be populated")
+                    // no need to send digests of versions less than the current version
+                    .truncate_below(config.version);
+
+                // TODO: Re-enable accumulator checks once enable_accumulators(), accumulator_root_exists(), and ProtocolVersion::prev() are implemented
+                // while supported_protocol_versions.max > config.version {
+                //     let proposed_protocol_config = ProtocolConfig::get_for_version(
+                //         supported_protocol_versions.max,
+                //         cur_epoch_store.get_chain_identifier().chain(),
+                //     );
+                //
+                //     if proposed_protocol_config.enable_accumulators()
+                //         && !epoch_store.accumulator_root_exists()
+                //     {
+                //         error!(
+                //             "cannot upgrade to protocol version {:?} because accumulator root does not exist",
+                //             supported_protocol_versions.max
+                //         );
+                //         supported_protocol_versions.max = supported_protocol_versions.max.prev();
+                //     } else {
+                //         break;
+                //     }
+                // }
+
+                // TODO: Implement ProtocolConfig::binary_config()
+                let binary_config = ProtocolConfig::get_for_version(
+                    supported_protocol_versions.max,
+                    cur_epoch_store.get_chain_identifier().chain(),
+                );
+                let transaction = ConsensusTransaction::new_capability_notification_v2(
+                    AuthorityCapabilitiesV2::new(
                         self.state.name,
-                        self.config
-                            .supported_protocol_versions
-                            .expect("Supported versions should be populated"),
+                        cur_epoch_store.get_chain_identifier().chain(),
+                        supported_protocol_versions,
                         self.state
                             .get_available_system_packages(&binary_config)
                             .await,
-                    ))
-                };
+                    ),
+                );
                 info!(?transaction, "submitting capabilities to consensus");
-                components
-                    .consensus_adapter
-                    .submit(transaction, None, &cur_epoch_store)?;
+                components.consensus_adapter.submit(
+                    transaction,
+                    None,
+                    &cur_epoch_store,
+                )?;
             }
 
-            let stop_condition = checkpoint_executor
-                .run_epoch(cur_epoch_store.clone(), run_with_range)
-                .await;
-            drop(checkpoint_executor);
+            let stop_condition = checkpoint_executor.run_epoch(cur_epoch_store.clone(), run_with_range).await;
 
             if stop_condition == StopReason::RunWithRangeCondition {
                 MysNode::shutdown(&self).await;
@@ -1754,13 +1793,13 @@ impl MysNode {
             #[cfg(not(msim))]
             debug_assert!(!latest_system_state.safe_mode());
 
-            if let Err(err) = self.end_of_epoch_channel.send(latest_system_state.clone()) {
-                if self.state.is_fullnode(&cur_epoch_store) {
-                    warn!(
-                        "Failed to send end of epoch notification to subscriber: {:?}",
-                        err
-                    );
-                }
+            if let Err(err) = self.end_of_epoch_channel.send(latest_system_state.clone())
+                && self.state.is_fullnode(&cur_epoch_store)
+            {
+                warn!(
+                    "Failed to send end of epoch notification to subscriber: {:?}",
+                    err
+                );
             }
 
             cur_epoch_store.record_is_safe_mode_metric(latest_system_state.safe_mode());
@@ -1794,15 +1833,22 @@ impl MysNode {
 
             cur_epoch_store.record_epoch_reconfig_start_time_metric();
 
-            let _ = send_trusted_peer_change(
-                &self.config,
-                &self.trusted_peer_change_tx,
-                &new_epoch_start_state,
-            );
+            update_peer_addresses(&self.config, &self.endpoint_manager, &new_epoch_start_state);
+
+            let mut validator_components_lock_guard = self.validator_components.lock().await;
 
             // The following code handles 4 different cases, depending on whether the node
             // was a validator in the previous epoch, and whether the node is a validator
             // in the new epoch.
+            let new_epoch_store = self
+                .reconfigure_state(
+                    &self.state,
+                    &cur_epoch_store,
+                    next_epoch_committee.clone(),
+                    new_epoch_start_state,
+                    hasher.clone(),
+                )
+                .await;
 
             let new_validator_components = if let Some(ValidatorComponents {
                 validator_server_handle,
@@ -1810,51 +1856,29 @@ impl MysNode {
                 consensus_manager,
                 consensus_store_pruner,
                 consensus_adapter,
-                mut checkpoint_service_tasks,
                 checkpoint_metrics,
                 mys_tx_validator_metrics,
-            }) = self.validator_components.lock().await.take()
+            }) = validator_components_lock_guard.take()
             {
                 info!("Reconfiguring the validator.");
-                // Cancel the old checkpoint service tasks.
-                // Waiting for checkpoint builder to finish gracefully is not possible, because it
-                // may wait on transactions while consensus on peers have already shut down.
-                checkpoint_service_tasks.abort_all();
-                while let Some(result) = checkpoint_service_tasks.join_next().await {
-                    if let Err(err) = result {
-                        if err.is_panic() {
-                            std::panic::resume_unwind(err.into_panic());
-                        }
-                        warn!("Error in checkpoint service task: {:?}", err);
-                    }
-                }
-                info!("Checkpoint service has shut down.");
 
                 consensus_manager.shutdown().await;
                 info!("Consensus has shut down.");
 
-                let new_epoch_store = self
-                    .reconfigure_state(
-                        &self.state,
-                        &cur_epoch_store,
-                        next_epoch_committee.clone(),
-                        new_epoch_start_state,
-                        accumulator.clone(),
-                    )
-                    .await;
                 info!("Epoch store finished reconfiguration.");
 
-                // No other components should be holding a strong reference to state accumulator
-                // at this point. Confirm here before we swap in the new accumulator.
-                let accumulator_metrics = Arc::into_inner(accumulator)
-                    .expect("Accumulator should have no other references at this point")
+                // No other components should be holding a strong reference to state hasher
+                // at this point. Confirm here before we swap in the new hasher.
+                let global_state_hasher_metrics = Arc::into_inner(hasher)
+                    .expect("Object state hasher should have no other references at this point")
                     .metrics();
-                let new_accumulator = Arc::new(StateAccumulator::new(
+                // TODO: Replace with GlobalStateHasher once implemented
+                let new_hasher = Arc::new(StateAccumulator::new(
                     self.state.get_accumulator_store().clone(),
-                    accumulator_metrics,
+                    global_state_hasher_metrics,
                 ));
-                let weak_accumulator = Arc::downgrade(&new_accumulator);
-                *accumulator_guard = Some(new_accumulator);
+                let weak_hasher = Arc::downgrade(&new_hasher);
+                *hasher_guard = Some(new_hasher);
 
                 consensus_store_pruner.prune(next_epoch).await;
 
@@ -1871,7 +1895,7 @@ impl MysNode {
                             self.randomness_handle.clone(),
                             consensus_manager,
                             consensus_store_pruner,
-                            weak_accumulator,
+                            weak_hasher,
                             self.backpressure_manager.clone(),
                             validator_server_handle,
                             validator_overload_monitor_handle,
@@ -1886,27 +1910,18 @@ impl MysNode {
                     None
                 }
             } else {
-                let new_epoch_store = self
-                    .reconfigure_state(
-                        &self.state,
-                        &cur_epoch_store,
-                        next_epoch_committee.clone(),
-                        new_epoch_start_state,
-                        accumulator.clone(),
-                    )
-                    .await;
-
-                // No other components should be holding a strong reference to state accumulator
-                // at this point. Confirm here before we swap in the new accumulator.
-                let accumulator_metrics = Arc::into_inner(accumulator)
-                    .expect("Accumulator should have no other references at this point")
+                // No other components should be holding a strong reference to state hasher
+                // at this point. Confirm here before we swap in the new hasher.
+                let global_state_hasher_metrics = Arc::into_inner(hasher)
+                    .expect("Object state hasher should have no other references at this point")
                     .metrics();
-                let new_accumulator = Arc::new(StateAccumulator::new(
+                // TODO: Replace with GlobalStateHasher once implemented
+                let new_hasher = Arc::new(StateAccumulator::new(
                     self.state.get_accumulator_store().clone(),
-                    accumulator_metrics,
+                    global_state_hasher_metrics,
                 ));
-                let weak_accumulator = Arc::downgrade(&new_accumulator);
-                *accumulator_guard = Some(new_accumulator);
+                let weak_hasher = Arc::downgrade(&new_hasher);
+                *hasher_guard = Some(new_hasher);
 
                 if self.state.is_validator(&new_epoch_store) {
                     info!("Promoting the node from fullnode to validator, starting grpc server");
@@ -1919,22 +1934,28 @@ impl MysNode {
                         self.checkpoint_store.clone(),
                         self.state_sync_handle.clone(),
                         self.randomness_handle.clone(),
-                        weak_accumulator,
+                        weak_hasher,
                         self.backpressure_manager.clone(),
                         self.connection_monitor_status.clone(),
                         &self.registry_service,
                         self.metrics.clone(),
+                        self.checkpoint_metrics.clone(),
                     )
                     .await?;
 
-                    components.validator_server_handle = components.validator_server_handle.start();
+                    components.validator_server_handle =
+                        components.validator_server_handle.start().await;
+
+                    // Set the consensus address updater as the full node got promoted now to a validator.
+                    self.endpoint_manager
+                        .set_consensus_address_updater(components.consensus_manager.clone());
 
                     Some(components)
                 } else {
                     None
                 }
             };
-            *self.validator_components.lock().await = new_validator_components;
+            *validator_components_lock_guard = new_validator_components;
 
             // Force releasing current epoch store DB handle, because the
             // Arc<AuthorityPerEpochStore> may linger.
@@ -1949,13 +1970,14 @@ impl MysNode {
                 )
             {
                 self.state
-                .prune_checkpoints_for_eligible_epochs_for_testing(
-                    self.config.clone(),
-                    mys_core::authority::authority_store_pruner::AuthorityStorePruningMetrics::new_for_test(),
-                )
-                .await?;
+                    .prune_checkpoints_for_eligible_epochs_for_testing(
+                        self.config.clone(),
+                        mys_core::authority::authority_store_pruner::AuthorityStorePruningMetrics::new_for_test(),
+                    )
+                    .await?;
             }
 
+            epoch_store = new_epoch_store;
             info!("Reconfiguration finished");
         }
     }
@@ -1972,7 +1994,7 @@ impl MysNode {
         cur_epoch_store: &AuthorityPerEpochStore,
         next_epoch_committee: Committee,
         next_epoch_start_system_state: EpochStartSystemState,
-        accumulator: Arc<StateAccumulator>,
+        global_state_hasher: Arc<GlobalStateHasher>,
     ) -> Arc<AuthorityPerEpochStore> {
         let next_epoch = next_epoch_committee.epoch();
 
@@ -1981,6 +2003,15 @@ impl MysNode {
             .get_epoch_last_checkpoint(cur_epoch_store.epoch())
             .expect("Error loading last checkpoint for current epoch")
             .expect("Could not load last checkpoint for current epoch");
+
+        let last_checkpoint_seq = *last_checkpoint.sequence_number();
+
+        assert_eq!(
+            Some(last_checkpoint_seq),
+            self.checkpoint_store
+                .get_highest_executed_checkpoint_seq_number()
+                .expect("Error loading highest executed checkpoint sequence number")
+        );
 
         let epoch_start_configuration = EpochStartConfiguration::new(
             next_epoch_start_system_state,
@@ -1997,7 +2028,7 @@ impl MysNode {
                 self.config.supported_protocol_versions.unwrap(),
                 next_epoch_committee,
                 epoch_start_configuration,
-                accumulator,
+                global_state_hasher,
                 &self.config.expensive_safety_check_config,
             )
             .await
@@ -2019,6 +2050,251 @@ impl MysNode {
     pub fn randomness_handle(&self) -> randomness::Handle {
         self.randomness_handle.clone()
     }
+
+    pub fn endpoint_manager(&self) -> &EndpointManager {
+        &self.endpoint_manager
+    }
+
+    /// Get a short prefix of a digest for metric labels
+    fn get_digest_prefix(digest: impl std::fmt::Display) -> String {
+        let digest_str = digest.to_string();
+        if digest_str.len() >= 8 {
+            digest_str[0..8].to_string()
+        } else {
+            digest_str
+        }
+    }
+
+    /// Check for previously detected forks and handle them appropriately.
+    /// For validators with fork recovery config, clear the fork if it matches the recovery config.
+    /// For all other cases, block node startup if a fork is detected.
+    async fn check_and_recover_forks(
+        checkpoint_store: &CheckpointStore,
+        checkpoint_metrics: &CheckpointMetrics,
+        is_validator: bool,
+        fork_recovery: Option<&ForkRecoveryConfig>,
+    ) -> Result<()> {
+        // Fork detection and recovery is only relevant for validators
+        // Fullnodes should sync from validators and don't need fork checking
+        if !is_validator {
+            return Ok(());
+        }
+
+        // Try to recover from forks if recovery config is provided
+        if let Some(recovery) = fork_recovery {
+            Self::try_recover_checkpoint_fork(checkpoint_store, recovery)?;
+            Self::try_recover_transaction_fork(checkpoint_store, recovery)?;
+        }
+
+        if let Some((checkpoint_seq, checkpoint_digest)) = checkpoint_store
+            .get_checkpoint_fork_detected()
+            .map_err(|e| {
+                error!("Failed to check for checkpoint fork: {:?}", e);
+                e
+            })?
+        {
+            Self::handle_checkpoint_fork(
+                checkpoint_seq,
+                checkpoint_digest,
+                checkpoint_metrics,
+                fork_recovery,
+            )
+            .await?;
+        }
+        if let Some((tx_digest, expected_effects, actual_effects)) = checkpoint_store
+            .get_transaction_fork_detected()
+            .map_err(|e| {
+                error!("Failed to check for transaction fork: {:?}", e);
+                e
+            })?
+        {
+            Self::handle_transaction_fork(
+                tx_digest,
+                expected_effects,
+                actual_effects,
+                checkpoint_metrics,
+                fork_recovery,
+            )
+            .await?;
+        }
+
+        Ok(())
+    }
+
+    fn try_recover_checkpoint_fork(
+        checkpoint_store: &CheckpointStore,
+        recovery: &ForkRecoveryConfig,
+    ) -> Result<()> {
+        // If configured overrides include a checkpoint whose locally computed digest mismatches,
+        // clear locally computed checkpoints from that sequence (inclusive).
+        for (seq, expected_digest_str) in &recovery.checkpoint_overrides {
+            let Ok(expected_digest) = CheckpointDigest::from_str(expected_digest_str) else {
+                anyhow::bail!(
+                    "Invalid checkpoint digest override for seq {}: {}",
+                    seq,
+                    expected_digest_str
+                );
+            };
+
+            if let Some(local_summary) = checkpoint_store.get_locally_computed_checkpoint(*seq)? {
+                let local_digest = mys_types::message_envelope::Message::digest(&local_summary);
+                if local_digest != expected_digest {
+                    info!(
+                        seq,
+                        local = %Self::get_digest_prefix(local_digest),
+                        expected = %Self::get_digest_prefix(expected_digest),
+                        "Fork recovery: clearing locally_computed_checkpoints from {} due to digest mismatch",
+                        seq
+                    );
+                    checkpoint_store
+                        .clear_locally_computed_checkpoints_from(*seq)
+                        .context(
+                            "Failed to clear locally computed checkpoints from override seq",
+                        )?;
+                }
+            }
+        }
+
+        if let Some((checkpoint_seq, checkpoint_digest)) =
+            checkpoint_store.get_checkpoint_fork_detected()?
+            && recovery.checkpoint_overrides.contains_key(&checkpoint_seq)
+        {
+            info!(
+                "Fork recovery enabled: clearing checkpoint fork at seq {} with digest {:?}",
+                checkpoint_seq, checkpoint_digest
+            );
+            checkpoint_store
+                .clear_checkpoint_fork_detected()
+                .expect("Failed to clear checkpoint fork detected marker");
+        }
+        Ok(())
+    }
+
+    fn try_recover_transaction_fork(
+        checkpoint_store: &CheckpointStore,
+        recovery: &ForkRecoveryConfig,
+    ) -> Result<()> {
+        if recovery.transaction_overrides.is_empty() {
+            return Ok(());
+        }
+
+        if let Some((tx_digest, _, _)) = checkpoint_store.get_transaction_fork_detected()?
+            && recovery
+                .transaction_overrides
+                .contains_key(&tx_digest.to_string())
+        {
+            info!(
+                "Fork recovery enabled: clearing transaction fork for tx {:?}",
+                tx_digest
+            );
+            checkpoint_store
+                .clear_transaction_fork_detected()
+                .expect("Failed to clear transaction fork detected marker");
+        }
+        Ok(())
+    }
+
+    fn get_current_timestamp() -> u64 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+    }
+
+    async fn handle_checkpoint_fork(
+        checkpoint_seq: u64,
+        checkpoint_digest: CheckpointDigest,
+        checkpoint_metrics: &CheckpointMetrics,
+        fork_recovery: Option<&ForkRecoveryConfig>,
+    ) -> Result<()> {
+        // TODO: Add checkpoint_fork_crash_mode to CheckpointMetrics
+        // checkpoint_metrics
+        //     .checkpoint_fork_crash_mode
+        //     .with_label_values(&[
+        //         &checkpoint_seq.to_string(),
+        //         &Self::get_digest_prefix(checkpoint_digest),
+        //         &Self::get_current_timestamp().to_string(),
+        //     ])
+        //     .set(1);
+
+        let behavior = fork_recovery
+            .map(|fr| fr.fork_crash_behavior)
+            .unwrap_or_default();
+
+        match behavior {
+            ForkCrashBehavior::AwaitForkRecovery => {
+                error!(
+                    checkpoint_seq = checkpoint_seq,
+                    checkpoint_digest = ?checkpoint_digest,
+                    "Checkpoint fork detected! Node startup halted. Sleeping indefinitely."
+                );
+                futures::future::pending::<()>().await;
+                unreachable!("pending() should never return");
+            }
+            ForkCrashBehavior::ReturnError => {
+                error!(
+                    checkpoint_seq = checkpoint_seq,
+                    checkpoint_digest = ?checkpoint_digest,
+                    "Checkpoint fork detected! Returning error."
+                );
+                Err(anyhow::anyhow!(
+                    "Checkpoint fork detected! checkpoint_seq: {}, checkpoint_digest: {:?}",
+                    checkpoint_seq,
+                    checkpoint_digest
+                ))
+            }
+        }
+    }
+
+    async fn handle_transaction_fork(
+        tx_digest: TransactionDigest,
+        expected_effects_digest: TransactionEffectsDigest,
+        actual_effects_digest: TransactionEffectsDigest,
+        checkpoint_metrics: &CheckpointMetrics,
+        fork_recovery: Option<&ForkRecoveryConfig>,
+    ) -> Result<()> {
+        // TODO: Add transaction_fork_crash_mode to CheckpointMetrics
+        // checkpoint_metrics
+        //     .transaction_fork_crash_mode
+        //     .with_label_values(&[
+        //         &Self::get_digest_prefix(tx_digest),
+        //         &Self::get_digest_prefix(expected_effects_digest),
+        //         &Self::get_digest_prefix(actual_effects_digest),
+        //         &Self::get_current_timestamp().to_string(),
+        //     ])
+        //     .set(1);
+
+        let behavior = fork_recovery
+            .map(|fr| fr.fork_crash_behavior)
+            .unwrap_or_default();
+
+        match behavior {
+            ForkCrashBehavior::AwaitForkRecovery => {
+                error!(
+                    tx_digest = ?tx_digest,
+                    expected_effects_digest = ?expected_effects_digest,
+                    actual_effects_digest = ?actual_effects_digest,
+                    "Transaction fork detected! Node startup halted. Sleeping indefinitely."
+                );
+                futures::future::pending::<()>().await;
+                unreachable!("pending() should never return");
+            }
+            ForkCrashBehavior::ReturnError => {
+                error!(
+                    tx_digest = ?tx_digest,
+                    expected_effects_digest = ?expected_effects_digest,
+                    actual_effects_digest = ?actual_effects_digest,
+                    "Transaction fork detected! Returning error."
+                );
+                Err(anyhow::anyhow!(
+                    "Transaction fork detected! tx_digest: {:?}, expected_effects: {:?}, actual_effects: {:?}",
+                    tx_digest,
+                    expected_effects_digest,
+                    actual_effects_digest
+                ))
+            }
+        }
+    }
 }
 
 #[cfg(not(msim))]
@@ -2028,10 +2304,11 @@ impl MysNode {
         provider: &OIDCProvider,
     ) -> MysResult<Vec<(JwkId, JWK)>> {
         use fastcrypto_zkp::bn254::zk_login::fetch_jwks;
+        use mys_types::error::MysErrorKind;
         let client = reqwest::Client::new();
         fetch_jwks(provider, &client)
             .await
-            .map_err(|_| MysError::JWKRetrievalError)
+            .map_err(|_| MysErrorKind::JWKRetrievalError.into())
     }
 }
 
@@ -2059,21 +2336,25 @@ impl MysNode {
 
 enum SpawnOnce {
     // Mutex is only needed to make SpawnOnce Send
-    Unstarted(Mutex<BoxFuture<'static, Result<()>>>),
+    Unstarted(oneshot::Receiver<()>, Mutex<BoxFuture<'static, ()>>),
     #[allow(unused)]
-    Started(JoinHandle<Result<()>>),
+    Started(JoinHandle<()>),
 }
 
 impl SpawnOnce {
-    pub fn new(future: impl Future<Output = Result<()>> + Send + 'static) -> Self {
-        Self::Unstarted(Mutex::new(Box::pin(future)))
+    pub fn new(
+        ready_rx: oneshot::Receiver<()>,
+        future: impl Future<Output = ()> + Send + 'static,
+    ) -> Self {
+        Self::Unstarted(ready_rx, Mutex::new(Box::pin(future)))
     }
 
-    pub fn start(self) -> Self {
+    pub async fn start(self) -> Self {
         match self {
-            Self::Unstarted(future) => {
+            Self::Unstarted(ready_rx, future) => {
                 let future = future.into_inner();
                 let handle = tokio::spawn(future);
+                ready_rx.await.unwrap();
                 Self::Started(handle)
             }
             Self::Started(_) => self,
@@ -2081,22 +2362,23 @@ impl SpawnOnce {
     }
 }
 
-/// Notify state-sync that a new list of trusted peers are now available.
-fn send_trusted_peer_change(
+/// Updates trusted peer addresses in the p2p network.
+fn update_peer_addresses(
     config: &NodeConfig,
-    sender: &watch::Sender<TrustedPeerChangeEvent>,
-    epoch_state_state: &EpochStartSystemState,
-) -> Result<(), watch::error::SendError<TrustedPeerChangeEvent>> {
-    sender
-        .send(TrustedPeerChangeEvent {
-            new_peers: epoch_state_state.get_validator_as_p2p_peers(config.protocol_public_key()),
-        })
-        .tap_err(|err| {
-            warn!(
-                "Failed to send validator peer information to state sync: {:?}",
-                err
-            );
-        })
+    endpoint_manager: &EndpointManager,
+    epoch_start_state: &EpochStartSystemState,
+) {
+    for peer_info in
+        epoch_start_state.get_validator_as_p2p_peers(config.protocol_public_key())
+    {
+        endpoint_manager
+            .update_endpoint(
+                EndpointId::P2p(peer_info.peer_id),
+                AddressSource::Committee,
+                peer_info.address,
+            )
+            .expect("Updating peer addresses should not fail");
+    }
 }
 
 fn build_kv_store(
@@ -2144,31 +2426,32 @@ fn build_kv_store(
     )))
 }
 
-pub async fn build_http_server(
+async fn build_http_servers(
     state: Arc<AuthorityState>,
     store: RocksDbStore,
-    transaction_orchestrator: &Option<Arc<TransactiondOrchestrator<NetworkAuthorityClient>>>,
+    transaction_orchestrator: &Option<Arc<TransactionOrchestrator<NetworkAuthorityClient>>>,
     config: &NodeConfig,
     prometheus_registry: &Registry,
-    _custom_runtime: Option<Handle>,
-    software_version: &'static str,
-) -> Result<(
-    Option<mys_http::ServerHandle>,
-    Option<tokio::sync::mpsc::Sender<CheckpointData>>,
-)> {
+    server_version: ServerVersion,
+) -> Result<(HttpServers, Option<tokio::sync::mpsc::Sender<mys_types::full_checkpoint_content::CheckpointData>>)> {
     // Validators do not expose these APIs
     if config.consensus_config().is_some() {
-        return Ok((None, None));
+        return Ok((HttpServers::default(), None));
     }
+
+    info!("starting rpc service with config: {:?}", config.rpc);
 
     let mut router = axum::Router::new();
 
     let json_rpc_router = {
+        // TODO: Add traffic_controller field to AuthorityState
+        // For now, create a default traffic controller or use None
+        let traffic_controller = None; // state.traffic_controller.clone();
         let mut server = JsonRpcServerBuilder::new(
             env!("CARGO_PKG_VERSION"),
             prometheus_registry,
+            traffic_controller,
             config.policy_config.clone(),
-            config.firewall_config.clone(),
         );
 
         let kv_store = build_kv_store(&state, config, prometheus_registry)?;
@@ -2207,25 +2490,25 @@ pub async fn build_http_server(
                 config.name_service_registry_id,
                 config.name_service_reverse_registry_id,
             ) {
-                mys_json_rpc::name_service::NameServiceConfig::new(
+                mys_name_service::NameServiceConfig::new(
                     package_address,
                     registry_id,
                     reverse_registry_id,
                 )
             } else {
                 match state.get_chain_identifier().chain() {
-                    Chain::Mainnet => mys_json_rpc::name_service::NameServiceConfig::mainnet(),
-                    Chain::Testnet => mys_json_rpc::name_service::NameServiceConfig::testnet(),
-                    Chain::Unknown => mys_json_rpc::name_service::NameServiceConfig::default(),
+                    Chain::Mainnet => mys_name_service::NameServiceConfig::mainnet(),
+                    Chain::Testnet => mys_name_service::NameServiceConfig::testnet(),
+                    Chain::Unknown => mys_name_service::NameServiceConfig::default(),
                 }
             };
 
         server.register_module(IndexerApi::new(
             state.clone(),
             ReadApi::new(state.clone(), kv_store.clone(), metrics.clone()),
-            kv_store.clone(),
+            kv_store,
             name_service_config,
-            metrics.clone(),
+            metrics,
             config.indexer_max_subscriptions,
         ))?;
         server.register_module(MoveUtils::new(state.clone()))?;
@@ -2240,10 +2523,9 @@ pub async fn build_http_server(
     let (subscription_service_checkpoint_sender, subscription_service_handle) =
         SubscriptionService::build(prometheus_registry);
     let rpc_router = {
-        let mut rpc_service = mys_rpc_api::RpcService::new(
-            Arc::new(RestReadStore::new(state.clone(), store)),
-            software_version,
-        );
+        let mut rpc_service =
+            mys_rpc_api::RpcService::new(Arc::new(RestReadStore::new(state.clone(), store)), env!("CARGO_PKG_VERSION"));
+        rpc_service.with_server_version(server_version);
 
         if let Some(config) = config.rpc.clone() {
             rpc_service.with_config(config);
@@ -2267,17 +2549,57 @@ pub async fn build_http_server(
             }
             request
         })
-        .layer(axum::middleware::from_fn(server_timing_middleware));
+        .layer(axum::middleware::from_fn(server_timing_middleware))
+        // Setup a permissive CORS policy
+        .layer(
+            tower_http::cors::CorsLayer::new()
+                .allow_methods([http::Method::GET, http::Method::POST])
+                .allow_origin(tower_http::cors::Any)
+                .allow_headers(tower_http::cors::Any)
+                .expose_headers(tower_http::cors::Any),
+        );
 
     router = router.merge(rpc_router).layer(layers);
 
-    let handle = mys_http::Builder::new()
+    // TODO: Implement TLS config methods: tls_config(), https_address(), tls_single_cert()
+    let https = None;
+    // if let Some((tls_config, https_address)) = config
+    //     .rpc()
+    //     .and_then(|config| config.tls_config().map(|tls| (tls, config.https_address())))
+    // {
+    //     let https = mys_http::Builder::new()
+    //         .tls_single_cert(tls_config.cert(), tls_config.key())
+    //         .and_then(|builder| builder.serve(https_address, router.clone()))
+    //         .map_err(|e| anyhow::anyhow!(e))?;
+
+    //     info!(
+    //         https_address =? https.local_addr(),
+    //         "HTTPS rpc server listening on {}",
+    //         https.local_addr()
+    //     );
+    //
+    //     Some(https)
+    // } else {
+    //     None
+    // };
+
+    let http = mys_http::Builder::new()
         .serve(&config.json_rpc_address, router)
-        .map_err(|e| anyhow::anyhow!("{e}"))?;
+        .map_err(|e| anyhow::anyhow!(e))?;
 
-    info!(local_addr =? handle.local_addr(), "MySocail JSON-RPC server listening on {}", handle.local_addr());
+    info!(
+        http_address =? http.local_addr(),
+        "HTTP rpc server listening on {}",
+        http.local_addr()
+    );
 
-    Ok((Some(handle), Some(subscription_service_checkpoint_sender)))
+    Ok((
+        HttpServers {
+            http: Some(http),
+            https,
+        },
+        Some(subscription_service_checkpoint_sender),
+    ))
 }
 
 #[cfg(not(test))]
@@ -2288,4 +2610,126 @@ fn max_tx_per_checkpoint(protocol_config: &ProtocolConfig) -> usize {
 #[cfg(test)]
 fn max_tx_per_checkpoint(_: &ProtocolConfig) -> usize {
     2
+}
+
+#[derive(Default)]
+struct HttpServers {
+    #[allow(unused)]
+    http: Option<mys_http::ServerHandle>,
+    #[allow(unused)]
+    https: Option<mys_http::ServerHandle>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use prometheus::Registry;
+    use std::collections::BTreeMap;
+    use mys_config::node::{ForkCrashBehavior, ForkRecoveryConfig};
+    use mys_core::checkpoints::{CheckpointMetrics, CheckpointStore};
+    use mys_types::digests::{CheckpointDigest, TransactionDigest, TransactionEffectsDigest};
+
+    #[tokio::test]
+    async fn test_fork_error_and_recovery_both_paths() {
+        let checkpoint_store = CheckpointStore::new_for_tests();
+        let checkpoint_metrics = CheckpointMetrics::new(&Registry::new());
+
+        // ---------- Checkpoint fork path ----------
+        let seq_num = 42;
+        let digest = CheckpointDigest::random();
+        checkpoint_store
+            .record_checkpoint_fork_detected(seq_num, digest)
+            .unwrap();
+
+        let fork_recovery = ForkRecoveryConfig {
+            transaction_overrides: Default::default(),
+            checkpoint_overrides: Default::default(),
+            fork_crash_behavior: ForkCrashBehavior::ReturnError,
+        };
+
+        let r = MysNode::check_and_recover_forks(
+            &checkpoint_store,
+            &checkpoint_metrics,
+            true,
+            Some(&fork_recovery),
+        )
+        .await;
+        assert!(r.is_err());
+        assert!(
+            r.unwrap_err()
+                .to_string()
+                .contains("Checkpoint fork detected")
+        );
+
+        let mut checkpoint_overrides = BTreeMap::new();
+        checkpoint_overrides.insert(seq_num, digest.to_string());
+        let fork_recovery_with_override = ForkRecoveryConfig {
+            transaction_overrides: Default::default(),
+            checkpoint_overrides,
+            fork_crash_behavior: ForkCrashBehavior::ReturnError,
+        };
+        let r = MysNode::check_and_recover_forks(
+            &checkpoint_store,
+            &checkpoint_metrics,
+            true,
+            Some(&fork_recovery_with_override),
+        )
+        .await;
+        assert!(r.is_ok());
+        assert!(
+            checkpoint_store
+                .get_checkpoint_fork_detected()
+                .unwrap()
+                .is_none()
+        );
+
+        // ---------- Transaction fork path ----------
+        let tx_digest = TransactionDigest::random();
+        let expected_effects = TransactionEffectsDigest::random();
+        let actual_effects = TransactionEffectsDigest::random();
+        checkpoint_store
+            .record_transaction_fork_detected(tx_digest, expected_effects, actual_effects)
+            .unwrap();
+
+        let fork_recovery = ForkRecoveryConfig {
+            transaction_overrides: Default::default(),
+            checkpoint_overrides: Default::default(),
+            fork_crash_behavior: ForkCrashBehavior::ReturnError,
+        };
+        let r = MysNode::check_and_recover_forks(
+            &checkpoint_store,
+            &checkpoint_metrics,
+            true,
+            Some(&fork_recovery),
+        )
+        .await;
+        assert!(r.is_err());
+        assert!(
+            r.unwrap_err()
+                .to_string()
+                .contains("Transaction fork detected")
+        );
+
+        let mut transaction_overrides = BTreeMap::new();
+        transaction_overrides.insert(tx_digest.to_string(), actual_effects.to_string());
+        let fork_recovery_with_override = ForkRecoveryConfig {
+            transaction_overrides,
+            checkpoint_overrides: Default::default(),
+            fork_crash_behavior: ForkCrashBehavior::ReturnError,
+        };
+        let r = MysNode::check_and_recover_forks(
+            &checkpoint_store,
+            &checkpoint_metrics,
+            true,
+            Some(&fork_recovery_with_override),
+        )
+        .await;
+        assert!(r.is_ok());
+        assert!(
+            checkpoint_store
+                .get_transaction_fork_detected()
+                .unwrap()
+                .is_none()
+        );
+    }
 }

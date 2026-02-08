@@ -9,7 +9,7 @@ use mys_data_ingestion_core::{create_remote_store_client, Worker};
 use mys_storage::blob::{Blob, BlobEncoding};
 use mys_types::full_checkpoint_content::CheckpointData;
 use object_store::path::Path;
-use object_store::ObjectStore;
+use object_store::{ObjectStore, ObjectStoreExt};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

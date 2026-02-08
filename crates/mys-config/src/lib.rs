@@ -18,11 +18,13 @@ pub mod node;
 pub mod node_config_metrics;
 pub mod object_storage_config;
 pub mod p2p;
+pub mod rpc_config;
 pub mod transaction_deny_config;
 pub mod verifier_signing_config;
 
 use mys_types::multiaddr::Multiaddr;
 pub use node::{ConsensusConfig, ExecutionCacheConfig, NodeConfig};
+pub use rpc_config::{RpcConfig, RpcIndexInitConfig, RpcTlsConfig};
 
 const MYS_DIR: &str = ".mys";
 pub const MYS_CONFIG_DIR: &str = "mys_config";

@@ -99,7 +99,7 @@ impl SpanExporter for FileExporter {
                     if let Some(file) = maybe_file {
                         let request = ExportTraceServiceRequest { resource_spans };
 
-                        let buf = request.encode_length_delimited_to_vec();
+                        let buf = Message::encode_length_delimited_to_vec(&request);
 
                         file.write_all(&buf)
                     } else {

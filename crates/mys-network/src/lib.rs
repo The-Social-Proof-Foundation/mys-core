@@ -7,9 +7,11 @@ use std::time::Duration;
 
 pub mod api;
 pub mod discovery;
+pub mod endpoint_manager;
 pub mod randomness;
 pub mod state_sync;
 pub mod utils;
+pub mod validator;
 
 pub use tonic;
 

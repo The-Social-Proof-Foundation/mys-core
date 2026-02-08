@@ -5,50 +5,59 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use async_trait::async_trait;
 use diesel_async::RunQueryDsl;
-use mys_indexer_alt_framework::pipeline::{concurrent::Handler, Processor};
-use mys_indexer_alt_schema::{objects::StoredObjVersion, schema::obj_versions};
-use mys_pg_db as db;
-use mys_types::full_checkpoint_content::CheckpointData;
+use mys_indexer_alt_framework::pipeline::Processor;
+use mys_indexer_alt_framework::postgres::Connection;
+use mys_indexer_alt_framework::postgres::handler::Handler;
+use mys_indexer_alt_framework::types::effects::TransactionEffectsAPI;
+use mys_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
+use mys_indexer_alt_schema::objects::StoredObjVersion;
+use mys_indexer_alt_schema::schema::obj_versions;
 
 pub(crate) struct ObjVersions;
 
+#[async_trait]
 impl Processor for ObjVersions {
     const NAME: &'static str = "obj_versions";
     type Value = StoredObjVersion;
 
-    fn process(&self, checkpoint: &Arc<CheckpointData>) -> Result<Vec<Self::Value>> {
-        let CheckpointData {
+    async fn process(&self, checkpoint: &Arc<Checkpoint>) -> Result<Vec<Self::Value>> {
+        let Checkpoint {
             transactions,
-            checkpoint_summary,
+            summary,
             ..
         } = checkpoint.as_ref();
 
-        let cp_sequence_number = checkpoint_summary.sequence_number as i64;
+        let cp_sequence_number = summary.sequence_number as i64;
         Ok(transactions
             .iter()
-            .flat_map(|txn| txn.output_objects.iter())
-            .map(|o| {
-                let id = o.id();
-                let version = o.version().value();
-                let digest = o.digest();
-                StoredObjVersion {
-                    object_id: id.to_vec(),
-                    object_version: version as i64,
-                    object_digest: digest.inner().into(),
-                    cp_sequence_number,
-                }
+            .flat_map(|tx| {
+                let lamport = tx.effects.lamport_version();
+
+                tx.effects
+                    .object_changes()
+                    .into_iter()
+                    .map(move |c| StoredObjVersion {
+                        object_id: c.id.to_vec(),
+                        // If the object was created or modified, it has an output version,
+                        // otherwise it was deleted/wrapped and its version is the transaction's
+                        // lamport version.
+                        object_version: c.output_version.unwrap_or(lamport).value() as i64,
+                        object_digest: c.output_digest.map(|d| d.inner().into()),
+                        cp_sequence_number,
+                    })
             })
             .collect())
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl Handler for ObjVersions {
     const MIN_EAGER_ROWS: usize = 100;
     const MAX_PENDING_ROWS: usize = 10000;
 
-    async fn commit(values: &[Self::Value], conn: &mut db::Connection<'_>) -> Result<usize> {
+    async fn commit<'a>(values: &[Self::Value], conn: &mut Connection<'a>) -> Result<usize> {
         Ok(diesel::insert_into(obj_versions::table)
             .values(values)
             .on_conflict_do_nothing()

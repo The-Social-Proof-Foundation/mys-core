@@ -47,6 +47,8 @@ use crate::{
     CommitIndex, Round,
 };
 
+const DEFAULT_GRPC_SERVER_TIMEOUT: Duration = Duration::from_secs(300);
+
 // Maximum bytes size in a single fetch_blocks()response.
 // TODO: put max RPC response size in protocol config.
 const MAX_FETCH_RESPONSE_BYTES: usize = 4 * 1024 * 1024;
@@ -737,7 +739,14 @@ impl<S: NetworkService> NetworkManager<S> for TonicManager {
                     .make_span_with(DefaultMakeSpan::new().level(tracing::Level::TRACE))
                     .on_failure(DefaultOnFailure::new().level(tracing::Level::DEBUG)),
             )
-            .layer_fn(|service| mysten_network::grpc_timeout::GrpcTimeout::new(service, None));
+            .layer_fn(|service| {
+                mysten_network::grpc_timeout::GrpcTimeout::new(
+                    service,
+                    // This should only bound the unary and initial response time,
+                    // not the duration of streaming responses.
+                    DEFAULT_GRPC_SERVER_TIMEOUT,
+                )
+            });
 
         let mut consensus_service_server = ConsensusServiceServer::new(service)
             .max_encoding_message_size(config.message_size_limit)

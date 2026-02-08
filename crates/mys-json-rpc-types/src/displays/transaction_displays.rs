@@ -53,6 +53,9 @@ impl<'a> Display for Pretty<'a, MysProgrammableTransactionBlock> {
                             object_id
                         )]);
                     }
+                    MysCallArg::FundsWithdrawal(_) => {
+                        builder.push_record(vec![format!("{i:<3} Funds Withdrawal")]);
+                    }
                 }
             }
 

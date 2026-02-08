@@ -41,7 +41,6 @@ use move_vm_runtime::session::SerializedReturnValues;
 use mys_core::authority::test_authority_builder::TestAuthorityBuilder;
 use mys_core::authority::AuthorityState;
 use mys_framework::DEFAULT_FRAMEWORK_PATH;
-use mys_graphql_rpc::test_infra::cluster::{RetentionConfig, SnapshotLagConfig};
 use mys_json_rpc_api::QUERY_MAX_RESULT_LIMIT;
 use mys_json_rpc_types::{
     DevInspectResults, DryRunTransactionBlockResponse, MysExecutionStatus,
@@ -134,11 +133,8 @@ const GAS_FOR_TESTING: u64 = GAS_VALUE_FOR_TESTING;
 const DEFAULT_CHAIN_START_TIMESTAMP: u64 = 0;
 
 /// Extra args related to configuring the indexer and reader.
-// TODO: the configs are still tied to the indexer crate, eventually we'd like a new command that is
-// more agnostic
 pub struct OffChainConfig {
-    pub snapshot_config: SnapshotLagConfig,
-    pub retention_config: Option<RetentionConfig>,
+    pub consistent_range: usize,
     /// Dir for simulacrum to write checkpoint files to. To be passed to the offchain indexer if it
     /// uses file-based ingestion.
     pub data_ingestion_path: PathBuf,
@@ -225,9 +221,8 @@ impl AdapterInitConfig {
             custom_validator_account,
             reference_gas_price,
             default_gas_price,
-            snapshot_config,
             flavor,
-            epochs_to_keep,
+            consistent_range,
             data_ingestion_path,
             rest_api_url,
         } = mys_args;
@@ -259,12 +254,8 @@ impl AdapterInitConfig {
         }
 
         let offchain_config = if simulator {
-            let retention_config =
-                epochs_to_keep.map(RetentionConfig::new_with_default_retention_only_for_testing);
-
             Some(OffChainConfig {
-                snapshot_config,
-                retention_config,
+                consistent_range,
                 data_ingestion_path: data_ingestion_path.unwrap_or(tempdir().unwrap().keep()),
                 rest_api_url,
             })

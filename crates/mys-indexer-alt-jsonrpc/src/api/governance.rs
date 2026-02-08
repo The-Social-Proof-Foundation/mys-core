@@ -3,36 +3,37 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Context as _;
-use diesel::{ExpressionMethods, QueryDsl};
+use diesel::ExpressionMethods;
+use diesel::QueryDsl;
 
-use jsonrpsee::{
-    core::{DeserializeOwned, RpcResult},
-    proc_macros::rpc,
-};
+use jsonrpsee::core::RpcResult;
+use jsonrpsee::http_client::HttpClient;
+use jsonrpsee::proc_macros::rpc;
 use mys_indexer_alt_schema::schema::kv_epoch_starts;
+use mys_json_rpc_api::GovernanceReadApiClient;
+use mys_json_rpc_types::DelegatedStake;
+use mys_json_rpc_types::ValidatorApys;
 use mys_open_rpc::Module;
 use mys_open_rpc_macros::open_rpc;
-use mys_types::{
-    base_types::ObjectID,
-    dynamic_field::{derive_dynamic_field_id, Field},
-    mys_serde::BigInt,
-    mys_system_state::{
-        mys_system_state_inner_v1::MysSystemStateInnerV1,
-        mys_system_state_inner_v2::MysSystemStateInnerV2,
-        mys_system_state_summary::MysSystemStateSummary, MysSystemStateTrait,
-        MysSystemStateWrapper,
-    },
-    object::Object,
-    TypeTag, MYS_SYSTEM_STATE_OBJECT_ID,
-};
+use mys_types::MYS_SYSTEM_STATE_OBJECT_ID;
+use mys_types::TypeTag;
+use mys_types::base_types::ObjectID;
+use mys_types::base_types::MysAddress;
+use mys_types::dynamic_field::Field;
+use mys_types::dynamic_field::derive_dynamic_field_id;
+use mys_types::mys_serde::BigInt;
+use mys_types::mys_system_state::MysSystemStateTrait;
+use mys_types::mys_system_state::MysSystemStateWrapper;
+use mys_types::mys_system_state::mys_system_state_inner_v1::MysSystemStateInnerV1;
+use mys_types::mys_system_state::mys_system_state_inner_v2::MysSystemStateInnerV2;
+use mys_types::mys_system_state::mys_system_state_summary::MysSystemStateSummary;
 
-use crate::{
-    context::Context,
-    data::objects::load_latest,
-    error::{internal_error, rpc_bail, InternalContext, RpcError},
-};
-
-use super::rpc_module::RpcModule;
+use crate::api::rpc_module::RpcModule;
+use crate::context::Context;
+use crate::data::load_live_deserialized;
+use crate::error::RpcError;
+use crate::error::client_error_to_error_object;
+use crate::error::rpc_bail;
 
 #[open_rpc(namespace = "mysx", tag = "Governance API")]
 #[rpc(server, namespace = "mysx")]
@@ -46,7 +47,33 @@ trait GovernanceApi {
     async fn get_latest_mys_system_state(&self) -> RpcResult<MysSystemStateSummary>;
 }
 
+#[open_rpc(namespace = "mysx", tag = "Delegation Governance API")]
+#[rpc(server, namespace = "mysx")]
+trait DelegationGovernanceApi {
+    /// Return one or more [DelegatedStake]. If a Stake was withdrawn its status will be Unstaked.
+    #[method(name = "getStakesByIds")]
+    async fn get_stakes_by_ids(
+        &self,
+        staked_mys_ids: Vec<ObjectID>,
+    ) -> RpcResult<Vec<DelegatedStake>>;
+
+    /// Return all [DelegatedStake].
+    #[method(name = "getStakes")]
+    async fn get_stakes(&self, owner: MysAddress) -> RpcResult<Vec<DelegatedStake>>;
+
+    /// Return the validator APY
+    #[method(name = "getValidatorsApy")]
+    async fn get_validators_apy(&self) -> RpcResult<ValidatorApys>;
+}
+
 pub(crate) struct Governance(pub Context);
+pub(crate) struct DelegationGovernance(HttpClient);
+
+impl DelegationGovernance {
+    pub(crate) fn new(client: HttpClient) -> Self {
+        Self(client)
+    }
+}
 
 #[async_trait::async_trait]
 impl GovernanceApiServer for Governance {
@@ -56,6 +83,39 @@ impl GovernanceApiServer for Governance {
 
     async fn get_latest_mys_system_state(&self) -> RpcResult<MysSystemStateSummary> {
         Ok(latest_mys_system_state_response(&self.0).await?)
+    }
+}
+
+#[async_trait::async_trait]
+impl DelegationGovernanceApiServer for DelegationGovernance {
+    async fn get_stakes_by_ids(
+        &self,
+        staked_mys_ids: Vec<ObjectID>,
+    ) -> RpcResult<Vec<DelegatedStake>> {
+        let Self(client) = self;
+
+        client
+            .get_stakes_by_ids(staked_mys_ids)
+            .await
+            .map_err(client_error_to_error_object)
+    }
+
+    async fn get_stakes(&self, owner: MysAddress) -> RpcResult<Vec<DelegatedStake>> {
+        let Self(client) = self;
+
+        client
+            .get_stakes(owner)
+            .await
+            .map_err(client_error_to_error_object)
+    }
+
+    async fn get_validators_apy(&self) -> RpcResult<ValidatorApys> {
+        let Self(client) = self;
+
+        client
+            .get_validators_apy()
+            .await
+            .map_err(client_error_to_error_object)
     }
 }
 
@@ -69,12 +129,22 @@ impl RpcModule for Governance {
     }
 }
 
+impl RpcModule for DelegationGovernance {
+    fn schema(&self) -> Module {
+        DelegationGovernanceApiOpenRpc::module_doc()
+    }
+
+    fn into_impl(self) -> jsonrpsee::RpcModule<Self> {
+        self.into_rpc()
+    }
+}
+
 /// Load data and generate response for `getReferenceGasPrice`.
 async fn rgp_response(ctx: &Context) -> Result<BigInt<u64>, RpcError> {
     use kv_epoch_starts::dsl as e;
 
     let mut conn = ctx
-        .reader()
+        .pg_reader()
         .connect()
         .await
         .context("Failed to connect to the database")?;
@@ -95,10 +165,9 @@ async fn rgp_response(ctx: &Context) -> Result<BigInt<u64>, RpcError> {
 async fn latest_mys_system_state_response(
     ctx: &Context,
 ) -> Result<MysSystemStateSummary, RpcError> {
-    let wrapper: MysSystemStateWrapper =
-        fetch_latest_for_system_state(ctx, MYS_SYSTEM_STATE_OBJECT_ID)
-            .await
-            .internal_context("Failed to fetch system state wrapper object")?;
+    let wrapper: MysSystemStateWrapper = load_live_deserialized(ctx, MYS_SYSTEM_STATE_OBJECT_ID)
+        .await
+        .context("Failed to fetch system state wrapper object")?;
 
     let inner_id = derive_dynamic_field_id(
         MYS_SYSTEM_STATE_OBJECT_ID,
@@ -108,39 +177,16 @@ async fn latest_mys_system_state_response(
     .context("Failed to derive inner system state field ID")?;
 
     Ok(match wrapper.version {
-        1 => fetch_latest_for_system_state::<Field<u64, MysSystemStateInnerV1>>(ctx, inner_id)
+        1 => load_live_deserialized::<Field<u64, MysSystemStateInnerV1>>(ctx, inner_id)
             .await
-            .internal_context("Failed to fetch inner system state object")?
+            .context("Failed to fetch inner system state object")?
             .value
             .into_mys_system_state_summary(),
-        2 => fetch_latest_for_system_state::<Field<u64, MysSystemStateInnerV2>>(ctx, inner_id)
+        2 => load_live_deserialized::<Field<u64, MysSystemStateInnerV2>>(ctx, inner_id)
             .await
-            .internal_context("Failed to fetch inner system state object")?
+            .context("Failed to fetch inner system state object")?
             .value
             .into_mys_system_state_summary(),
         v => rpc_bail!("Unexpected inner system state version: {v}"),
     })
-}
-
-/// Fetch the latest version of the object at ID `object_id`, and deserialize its contents as a
-/// Rust type `T`, assuming that it is a Move object (not a package).
-async fn fetch_latest_for_system_state<T: DeserializeOwned>(
-    ctx: &Context,
-    object_id: ObjectID,
-) -> Result<T, RpcError> {
-    let stored = load_latest(ctx.loader(), object_id)
-        .await?
-        .ok_or_else(|| internal_error!("No data found"))?
-        .serialized_object
-        .ok_or_else(|| internal_error!("No content found"))?;
-
-    let object: Object =
-        bcs::from_bytes(&stored).context("Failed to deserialize object contents")?;
-
-    let move_object = object
-        .data
-        .try_as_move()
-        .ok_or_else(|| internal_error!("Not a Move object"))?;
-
-    Ok(bcs::from_bytes(move_object.contents()).context("Failed to deserialize Move value")?)
 }

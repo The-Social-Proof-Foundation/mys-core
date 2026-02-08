@@ -3,66 +3,78 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Context;
-use bootstrap::bootstrap;
-use config::{IndexerConfig, PipelineLayer};
-use handlers::coin_balance_buckets::CoinBalanceBuckets;
-use handlers::{
-    ev_emit_mod::EvEmitMod, ev_struct_inst::EvStructInst, kv_checkpoints::KvCheckpoints,
-    kv_epoch_ends::KvEpochEnds, kv_epoch_starts::KvEpochStarts, kv_feature_flags::KvFeatureFlags,
-    kv_objects::KvObjects, kv_protocol_configs::KvProtocolConfigs, kv_transactions::KvTransactions,
-    obj_info::ObjInfo, obj_versions::ObjVersions, sum_displays::SumDisplays,
-    sum_packages::SumPackages, tx_affected_addresses::TxAffectedAddresses,
-    tx_affected_objects::TxAffectedObjects, tx_balance_changes::TxBalanceChanges,
-    tx_calls::TxCalls, tx_digests::TxDigests, tx_kinds::TxKinds,
-};
-use mys_indexer_alt_framework::handlers::cp_sequence_numbers::CpSequenceNumbers;
-use mys_indexer_alt_framework::ingestion::{ClientArgs, IngestionConfig};
-use mys_indexer_alt_framework::pipeline::{
-    concurrent::{ConcurrentConfig, PrunerConfig},
-    sequential::SequentialConfig,
-    CommitterConfig,
-};
-use mys_indexer_alt_framework::{Indexer, IndexerArgs};
-use mys_indexer_alt_schema::MIGRATIONS;
-use mys_pg_db::DbArgs;
 use prometheus::Registry;
-use tokio::task::JoinHandle;
-use tokio_util::sync::CancellationToken;
+use mys_indexer_alt_framework::Indexer;
+use mys_indexer_alt_framework::IndexerArgs;
+use mys_indexer_alt_framework::ingestion::ClientArgs;
+use mys_indexer_alt_framework::ingestion::IngestionConfig;
+use mys_indexer_alt_framework::pipeline::CommitterConfig;
+use mys_indexer_alt_framework::pipeline::concurrent::ConcurrentConfig;
+use mys_indexer_alt_framework::pipeline::concurrent::PrunerConfig;
+use mys_indexer_alt_framework::pipeline::sequential::SequentialConfig;
+use mys_indexer_alt_framework::postgres::Db;
+use mys_indexer_alt_framework::postgres::DbArgs;
+use mys_indexer_alt_metrics::db::DbConnectionStatsCollector;
+use mys_indexer_alt_schema::MIGRATIONS;
+use url::Url;
+
+use crate::bootstrap::bootstrap;
+use crate::config::IndexerConfig;
+use crate::config::PipelineLayer;
+use crate::handlers::coin_balance_buckets::CoinBalanceBuckets;
+use crate::handlers::cp_bloom_blocks::CpBloomBlocks;
+use crate::handlers::cp_blooms::CpBlooms;
+use crate::handlers::cp_sequence_numbers::CpSequenceNumbers;
+use crate::handlers::ev_emit_mod::EvEmitMod;
+use crate::handlers::ev_struct_inst::EvStructInst;
+use crate::handlers::kv_checkpoints::KvCheckpoints;
+use crate::handlers::kv_epoch_ends::KvEpochEnds;
+use crate::handlers::kv_epoch_starts::KvEpochStarts;
+use crate::handlers::kv_feature_flags::KvFeatureFlags;
+use crate::handlers::kv_objects::KvObjects;
+use crate::handlers::kv_packages::KvPackages;
+use crate::handlers::kv_protocol_configs::KvProtocolConfigs;
+use crate::handlers::kv_transactions::KvTransactions;
+use crate::handlers::obj_info::ObjInfo;
+use crate::handlers::obj_versions::ObjVersions;
+use crate::handlers::sum_displays::SumDisplays;
+use crate::handlers::tx_affected_addresses::TxAffectedAddresses;
+use crate::handlers::tx_affected_objects::TxAffectedObjects;
+use crate::handlers::tx_balance_changes::TxBalanceChanges;
+use crate::handlers::tx_calls::TxCalls;
+use crate::handlers::tx_digests::TxDigests;
+use crate::handlers::tx_kinds::TxKinds;
+
+pub use crate::bootstrap::BootstrapGenesis;
 
 pub mod args;
 #[cfg(feature = "benchmark")]
 pub mod benchmark;
 pub(crate) mod bootstrap;
 pub mod config;
-pub(crate) mod consistent_pruning;
 pub(crate) mod handlers;
 
-pub async fn start_indexer(
+pub async fn setup_indexer(
+    database_url: Url,
     db_args: DbArgs,
     indexer_args: IndexerArgs,
     client_args: ClientArgs,
     indexer_config: IndexerConfig,
-    // If true, the indexer will bootstrap from genesis.
-    // Otherwise it will skip the pipelines that rely on genesis data.
-    // TODO: There is probably a better way to handle this.
-    // For instance, we could also pass in dummy genesis data in the benchmark mode.
-    with_genesis: bool,
+    bootstrap_genesis: Option<BootstrapGenesis>,
     registry: &Registry,
-    cancel: CancellationToken,
-) -> anyhow::Result<JoinHandle<()>> {
+) -> anyhow::Result<Indexer<Db>> {
     let IndexerConfig {
         ingestion,
-        consistency,
         committer,
         pruner,
         pipeline,
-        extra: _,
-    } = indexer_config.finish();
+    } = indexer_config;
 
     let PipelineLayer {
         sum_displays,
-        sum_packages,
         coin_balance_buckets,
+        cp_blooms,
+        cp_bloom_blocks,
         cp_sequence_numbers,
         ev_emit_mod,
         ev_struct_inst,
@@ -71,6 +83,7 @@ pub async fn start_indexer(
         kv_epoch_starts,
         kv_feature_flags,
         kv_objects,
+        kv_packages,
         kv_protocol_configs,
         kv_transactions,
         obj_info,
@@ -81,24 +94,38 @@ pub async fn start_indexer(
         tx_calls,
         tx_digests,
         tx_kinds,
-        extra: _,
-    } = pipeline.finish();
+    } = pipeline;
 
-    let ingestion = ingestion.finish(IngestionConfig::default());
-    let consistency = consistency.finish(PrunerConfig::default());
-    let committer = committer.finish(CommitterConfig::default());
-    let pruner = pruner.finish(PrunerConfig::default());
+    let ingestion = ingestion.finish(IngestionConfig::default())?;
+    let committer = committer.finish(CommitterConfig::default())?;
+    let pruner = pruner.finish(PrunerConfig::default())?;
 
     let retry_interval = ingestion.retry_interval();
 
+    // Prepare the store for the indexer
+    let store = Db::for_write(database_url, db_args)
+        .await
+        .context("Failed to connect to database")?;
+
+    // we want to merge &MIGRATIONS with the migrations from the store
+    store
+        .run_migrations(Some(&MIGRATIONS))
+        .await
+        .context("Failed to run pending migrations")?;
+
+    registry.register(Box::new(DbConnectionStatsCollector::new(
+        Some("indexer_db"),
+        store.clone(),
+    )))?;
+
+    let metrics_prefix = None;
     let mut indexer = Indexer::new(
-        db_args,
+        store,
         indexer_args,
         client_args,
         ingestion,
-        Some(&MIGRATIONS),
+        metrics_prefix,
         registry,
-        cancel.clone(),
     )
     .await?;
 
@@ -110,28 +137,9 @@ pub async fn start_indexer(
     //  - Combining shared and per-pipeline configurations.
     //  - Registering the pipeline with the indexer.
     //
-    // There are three kinds of pipeline, each with their own macro: `add_concurrent`,
-    // `add_sequential`, and `add_consistent`. `add_concurrent` and `add_sequential` map directly
-    // to `Indexer::concurrent_pipeline` and `Indexer::sequential_pipeline` respectively while
-    // `add_consistent` is a special case that generates both a sequential "summary" pipeline and a
-    // `concurrent` "write-ahead log" pipeline, with their configuration based on the supplied
-    // ConsistencyConfig.
-
-    macro_rules! add_consistent {
-        ($handler:expr, $config:expr) => {
-            if let Some(layer) = $config {
-                indexer
-                    .concurrent_pipeline(
-                        $handler,
-                        ConcurrentConfig {
-                            committer: layer.finish(committer.clone()),
-                            pruner: Some(consistency.clone()),
-                        },
-                    )
-                    .await?
-            }
-        };
-    }
+    // There are two kinds of pipelines, each with their own macro: `add_concurrent` and
+    // `add_sequential`. They map directly to `Indexer::concurrent_pipeline` and
+    // `Indexer::sequential_pipeline` respectively.
 
     macro_rules! add_concurrent {
         ($handler:expr, $config:expr) => {
@@ -142,7 +150,7 @@ pub async fn start_indexer(
                         layer.finish(ConcurrentConfig {
                             committer: committer.clone(),
                             pruner: Some(pruner.clone()),
-                        }),
+                        })?,
                     )
                     .await?
             }
@@ -158,30 +166,29 @@ pub async fn start_indexer(
                         layer.finish(SequentialConfig {
                             committer: committer.clone(),
                             ..Default::default()
-                        }),
+                        })?,
                     )
                     .await?
             }
         };
     }
 
-    if with_genesis {
-        let genesis = bootstrap(&indexer, retry_interval, cancel.clone()).await?;
+    let genesis = bootstrap(&indexer, retry_interval, bootstrap_genesis).await?;
 
-        // Pipelines that rely on genesis information
-        add_concurrent!(KvFeatureFlags(genesis.clone()), kv_feature_flags);
-        add_concurrent!(KvProtocolConfigs(genesis.clone()), kv_protocol_configs);
-    }
-
-    // Consistent pipelines
-    add_consistent!(CoinBalanceBuckets::default(), coin_balance_buckets);
-    add_consistent!(ObjInfo::default(), obj_info);
+    // Pipelines that rely on genesis information
+    add_concurrent!(KvFeatureFlags(genesis.clone()), kv_feature_flags);
+    add_concurrent!(KvProtocolConfigs(genesis.clone()), kv_protocol_configs);
 
     // Summary tables (without write-ahead log)
     add_sequential!(SumDisplays, sum_displays);
-    add_sequential!(SumPackages, sum_packages);
+
+    // Concurrent pipelines with retention
+    add_concurrent!(CoinBalanceBuckets, coin_balance_buckets);
+    add_concurrent!(ObjInfo, obj_info);
 
     // Unpruned concurrent pipelines
+    add_concurrent!(CpBlooms, cp_blooms);
+    add_concurrent!(CpBloomBlocks, cp_bloom_blocks);
     add_concurrent!(CpSequenceNumbers, cp_sequence_numbers);
     add_concurrent!(EvEmitMod, ev_emit_mod);
     add_concurrent!(EvStructInst, ev_struct_inst);
@@ -189,6 +196,7 @@ pub async fn start_indexer(
     add_concurrent!(KvEpochEnds, kv_epoch_ends);
     add_concurrent!(KvEpochStarts, kv_epoch_starts);
     add_concurrent!(KvObjects, kv_objects);
+    add_concurrent!(KvPackages, kv_packages);
     add_concurrent!(KvTransactions, kv_transactions);
     add_concurrent!(ObjVersions, obj_versions);
     add_concurrent!(TxAffectedAddresses, tx_affected_addresses);
@@ -198,5 +206,5 @@ pub async fn start_indexer(
     add_concurrent!(TxDigests, tx_digests);
     add_concurrent!(TxKinds, tx_kinds);
 
-    indexer.run().await.context("Failed to start indexer")
+    Ok(indexer)
 }

@@ -18,7 +18,7 @@ use mys_types::base_types::{EpochId, ExecutionData};
 use mys_types::full_checkpoint_content::CheckpointData;
 use mys_types::messages_checkpoint::{CheckpointSequenceNumber, FullCheckpointContents};
 use object_store::path::Path;
-use object_store::ObjectStore;
+use object_store::{ObjectStore, ObjectStoreExt};
 use serde::{Deserialize, Serialize};
 use std::io::Cursor;
 

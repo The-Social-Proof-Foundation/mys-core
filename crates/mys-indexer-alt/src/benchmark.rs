@@ -2,16 +2,26 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::{path::PathBuf, time::Instant};
+use std::path::PathBuf;
+use std::time::Instant;
 
-use mys_indexer_alt_framework::{ingestion::ClientArgs, Indexer, IndexerArgs};
-use mys_indexer_alt_schema::MIGRATIONS;
-use mys_pg_db::{reset_database, DbArgs};
-use mys_synthetic_ingestion::synthetic_ingestion::read_ingestion_data;
 use prometheus::Registry;
-use tokio_util::sync::CancellationToken;
+use mys_indexer_alt_framework::IndexerArgs;
+use mys_indexer_alt_framework::ingestion::ClientArgs;
+use mys_indexer_alt_framework::ingestion::ingestion_client::IngestionClientArgs;
+use mys_indexer_alt_framework::postgres::DbArgs;
+use mys_indexer_alt_framework::postgres::reset_database;
+use mys_indexer_alt_framework::service::terminate;
+use mys_indexer_alt_schema::MIGRATIONS;
+use mys_indexer_alt_schema::checkpoints::StoredGenesis;
+use mys_indexer_alt_schema::epochs::StoredEpochStart;
+use mys_synthetic_ingestion::synthetic_ingestion::read_ingestion_data;
+use tracing::info;
+use url::Url;
 
-use crate::{config::IndexerConfig, start_indexer};
+use crate::BootstrapGenesis;
+use crate::config::IndexerConfig;
+use crate::setup_indexer;
 
 #[derive(clap::Args, Debug, Clone)]
 pub struct BenchmarkArgs {
@@ -26,6 +36,7 @@ pub struct BenchmarkArgs {
 }
 
 pub async fn run_benchmark(
+    database_url: Url,
     db_args: DbArgs,
     benchmark_args: BenchmarkArgs,
     indexer_config: IndexerConfig,
@@ -40,11 +51,7 @@ pub async fn run_benchmark(
     let last_checkpoint = *ingestion_data.keys().last().unwrap();
     let num_transactions: usize = ingestion_data.values().map(|c| c.transactions.len()).sum();
 
-    reset_database(
-        db_args.clone(),
-        Some(Indexer::migrations(Some(&MIGRATIONS))),
-    )
-    .await?;
+    reset_database(database_url.clone(), db_args.clone(), Some(&MIGRATIONS)).await?;
 
     let indexer_args = IndexerArgs {
         first_checkpoint: Some(first_checkpoint),
@@ -54,24 +61,48 @@ pub async fn run_benchmark(
     };
 
     let client_args = ClientArgs {
-        remote_store_url: None,
-        local_ingestion_path: Some(ingestion_path.clone()),
+        ingestion: IngestionClientArgs {
+            local_ingestion_path: Some(ingestion_path.clone()),
+            ..Default::default()
+        },
+        ..Default::default()
     };
 
     let cur_time = Instant::now();
+    let registry = Registry::new();
+    let indexer = tokio::select! {
+        _ = terminate() => {
+            info!("Indexer terminated during setup");
+            return Ok(());
+        }
 
-    start_indexer(
-        db_args,
-        indexer_args,
-        client_args,
-        indexer_config,
-        false, /* with_genesis */
-        &Registry::new(),
-        CancellationToken::new(),
-    )
-    .await?
-    .await?;
+        indexer = setup_indexer(
+            database_url,
+            db_args,
+            indexer_args,
+            client_args,
+            indexer_config,
+            Some(BootstrapGenesis {
+                stored_genesis: StoredGenesis {
+                    genesis_digest: [0u8; 32].to_vec(),
+                    initial_protocol_version: 0,
+                },
+                stored_epoch_start: StoredEpochStart {
+                    epoch: 0,
+                    protocol_version: 0,
+                    cp_lo: 0,
+                    start_timestamp_ms: 0,
+                    reference_gas_price: 0,
+                    system_state: vec![],
+                },
+            }),
+            &registry,
+        ) => {
+            indexer?
+        }
+    };
 
+    indexer.run().await?.join().await?;
     let elapsed = Instant::now().duration_since(cur_time);
     println!("Indexed {} transactions in {:?}", num_transactions, elapsed);
     println!("TPS: {}", num_transactions as f64 / elapsed.as_secs_f64());

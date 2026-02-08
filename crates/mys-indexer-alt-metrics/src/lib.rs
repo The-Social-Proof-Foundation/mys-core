@@ -3,11 +3,21 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::net::SocketAddr;
+use std::time::Instant;
 
-use axum::{http::StatusCode, routing::get, Extension, Router};
-use prometheus::{Registry, TextEncoder};
-use tokio::{net::TcpListener, task::JoinHandle};
-use tokio_util::sync::CancellationToken;
+use anyhow::Context;
+use axum::Extension;
+use axum::Router;
+use axum::http::StatusCode;
+use axum::routing::get;
+use prometheus::Registry;
+use prometheus::TextEncoder;
+use prometheus::core::Collector;
+use prometheus_closure_metric::ClosureMetric;
+use prometheus_closure_metric::ValueType;
+use mys_futures::service::Service;
+use tokio::net::TcpListener;
+use tokio::sync::oneshot;
 use tracing::info;
 
 pub mod db;
@@ -24,20 +34,17 @@ pub struct MetricsArgs {
 pub struct MetricsService {
     addr: SocketAddr,
     registry: Registry,
-    cancel: CancellationToken,
 }
 
 impl MetricsService {
     /// Create a new instance of the service, listening on the address provided in `args`, serving
-    /// metrics from the `registry`. The service will shut down if the provided `cancel` token is
-    /// cancelled.
+    /// metrics from the `registry`.
     ///
     /// The service will not be run until [Self::run] is called.
-    pub fn new(args: MetricsArgs, registry: Registry, cancel: CancellationToken) -> Self {
+    pub fn new(args: MetricsArgs, registry: Registry) -> Self {
         Self {
             addr: args.metrics_address,
             registry,
-            cancel,
         }
     }
 
@@ -47,28 +54,31 @@ impl MetricsService {
     }
 
     /// Start the service. The service will run until the cancellation token is triggered.
-    pub async fn run(self) -> anyhow::Result<JoinHandle<()>> {
-        let Self {
-            addr,
-            registry,
-            cancel,
-        } = self;
+    pub async fn run(self) -> anyhow::Result<Service> {
+        let Self { addr, registry } = self;
 
-        let listener = TcpListener::bind(&self.addr).await?;
+        let listener = TcpListener::bind(&self.addr)
+            .await
+            .with_context(|| format!("Failed to bind metrics at {addr}"))?;
+
         let app = Router::new()
             .route("/metrics", get(metrics))
             .layer(Extension(registry));
 
-        Ok(tokio::spawn(async move {
-            info!("Starting metrics service on {}", addr);
-            axum::serve(listener, app)
-                .with_graceful_shutdown(async move {
-                    cancel.cancelled().await;
-                    info!("Shutdown received, shutting down metrics service");
-                })
-                .await
-                .unwrap()
-        }))
+        let (stx, srx) = oneshot::channel::<()>();
+        Ok(Service::new()
+            .with_shutdown_signal(async move {
+                let _ = stx.send(());
+            })
+            .spawn(async move {
+                info!("Starting metrics service on {addr}");
+                Ok(axum::serve(listener, app)
+                    .with_graceful_shutdown(async move {
+                        let _ = srx.await;
+                        info!("Shutdown received, shutting down metrics service");
+                    })
+                    .await?)
+            }))
     }
 }
 
@@ -78,6 +88,19 @@ impl Default for MetricsArgs {
             metrics_address: "0.0.0.0:9184".parse().unwrap(),
         }
     }
+}
+
+/// A metric that tracks the service uptime.
+pub fn uptime(version: &str) -> anyhow::Result<Box<dyn Collector>> {
+    let init = Instant::now();
+    let opts = prometheus::opts!("uptime", "how long the service has been running in seconds")
+        .variable_label("version");
+
+    let metric = move || init.elapsed().as_secs();
+    let uptime = ClosureMetric::new(opts, ValueType::Counter, metric, &[version])
+        .context("Failed to create uptime metric")?;
+
+    Ok(Box::new(uptime))
 }
 
 /// Route handler for metrics service

@@ -82,7 +82,7 @@ impl InMemoryObjectStore {
                     {
                         *initial_shared_version
                     } else {
-                        // (before ConsensusV2 objects, we didn't track initial shared
+                        // (before ConsensusAddressOwner objects, we didn't track initial shared
                         // version for shared object locks)
                         SequenceNumber::UNKNOWN
                     };

@@ -47,8 +47,8 @@ use mys_types::signature::GenericSignature;
 use mys_types::storage::{DeleteKind, WriteKind};
 use mys_types::transaction::{
     Argument, CallArg, ChangeEpoch, Command, EndOfEpochTransactionKind, GenesisObject,
-    InputObjectKind, ObjectArg, ProgrammableMoveCall, ProgrammableTransaction, SenderSignedData,
-    TransactionData, TransactionDataAPI, TransactionKind,
+    InputObjectKind, ObjectArg, ProgrammableMoveCall, ProgrammableTransaction, Reservation, SenderSignedData,
+    TransactionData, TransactionDataAPI, TransactionKind, WithdrawFrom, WithdrawalTypeArg,
 };
 use mys_types::MYS_FRAMEWORK_ADDRESS;
 use mysten_metrics::monitored_scope;
@@ -2104,17 +2104,17 @@ impl From<InputObjectKind> for MysInputObjectKind {
             InputObjectKind::SharedMoveObject {
                 id,
                 initial_shared_version,
-                mutable,
+                mutability,
             } => Self::SharedMoveObject {
                 id,
                 initial_shared_version,
-                mutable,
+                mutable: mutability.is_exclusive(),
             },
         }
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema, Clone)]
+#[derive(Eq, PartialEq, Debug, Serialize, Deserialize, JsonSchema, Clone)]
 #[serde(rename = "TypeTag", rename_all = "camelCase")]
 pub struct MysTypeTag(String);
 
@@ -2220,6 +2220,9 @@ pub enum MysCallArg {
     Object(MysObjectArg),
     // pure value, bcs encoded
     Pure(MysPureValue),
+    // Reservation to withdraw balance. This will be converted into a Withdrawal struct and passed into Move.
+    // It is allowed to have multiple withdraw arguments even for the same balance type.
+    FundsWithdrawal(MysFundsWithdrawalArg),
 }
 
 impl MysCallArg {
@@ -2242,11 +2245,11 @@ impl MysCallArg {
             CallArg::Object(ObjectArg::SharedObject {
                 id,
                 initial_shared_version,
-                mutable,
+                mutability,
             }) => MysCallArg::Object(MysObjectArg::SharedObject {
                 object_id: id,
                 initial_shared_version,
-                mutable,
+                mutable: mutability.is_exclusive(),
             }),
             CallArg::Object(ObjectArg::Receiving((object_id, version, digest))) => {
                 MysCallArg::Object(MysObjectArg::Receiving {
@@ -2255,6 +2258,20 @@ impl MysCallArg {
                     digest,
                 })
             }
+            CallArg::FundsWithdrawal(arg) => MysCallArg::FundsWithdrawal(MysFundsWithdrawalArg {
+                reservation: match arg.reservation {
+                    Reservation::MaxAmountU64(amount) => MysReservation::MaxAmountU64(amount),
+                },
+                type_arg: match arg.type_arg {
+                    WithdrawalTypeArg::Balance(type_input) => {
+                        MysWithdrawalTypeArg::Balance(type_input.into())
+                    }
+                },
+                withdraw_from: match arg.withdraw_from {
+                    WithdrawFrom::Sender => MysWithdrawFrom::Sender,
+                    WithdrawFrom::Sponsor => MysWithdrawFrom::Sponsor,
+                },
+            }),
         })
     }
 
@@ -2327,6 +2344,38 @@ pub enum MysObjectArg {
         version: SequenceNumber,
         digest: ObjectDigest,
     },
+}
+
+#[serde_as]
+#[derive(Eq, PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum MysReservation {
+    MaxAmountU64(
+        #[schemars(with = "BigInt<u64>")]
+        #[serde_as(as = "BigInt<u64>")]
+        u64,
+    ),
+}
+
+#[derive(Eq, PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum MysWithdrawalTypeArg {
+    Balance(MysTypeTag),
+}
+
+#[derive(Eq, PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum MysWithdrawFrom {
+    Sender,
+    Sponsor,
+}
+
+#[derive(Eq, PartialEq, Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct MysFundsWithdrawalArg {
+    pub reservation: MysReservation,
+    pub type_arg: MysWithdrawalTypeArg,
+    pub withdraw_from: MysWithdrawFrom,
 }
 
 #[derive(Clone)]
@@ -2417,7 +2466,7 @@ impl Filter<EffectsWithInput> for TransactionFilter {
                 package,
                 module,
                 function,
-            } => item.input.move_calls().into_iter().any(|(p, m, f)| {
+            } => item.input.move_calls().into_iter().any(|(_idx, p, m, f)| {
                 p == package
                     && (module.is_none() || matches!(module,  Some(m2) if m2 == &m.to_string()))
                     && (function.is_none() || matches!(function, Some(f2) if f2 == &f.to_string()))

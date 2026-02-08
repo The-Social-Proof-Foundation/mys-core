@@ -16,7 +16,6 @@ pub use move_transactional_test_runner::framework::{
 use mys_core::authority::authority_per_epoch_store::CertLockGuard;
 use mys_core::authority::authority_test_utils::send_and_confirm_transaction_with_execution_error;
 use mys_core::authority::AuthorityState;
-use mys_json_rpc::authority_state::StateRead;
 use mys_json_rpc_types::EventFilter;
 use mys_json_rpc_types::{DevInspectResults, DryRunTransactionBlockResponse};
 use mys_storage::key_value_store::TransactionKeyValueStore;
@@ -259,7 +258,7 @@ impl TransactionalAdapter for ValidatorWithFullnode {
     async fn get_active_validator_addresses(&self) -> MysResult<Vec<MysAddress>> {
         Ok(self
             .fullnode
-            .get_system_state()
+            .get_mys_system_state_object_for_testing()
             .map_err(|e| {
                 MysError::MysSystemStateReadError(format!(
                     "Failed to get system state from fullnode: {}",

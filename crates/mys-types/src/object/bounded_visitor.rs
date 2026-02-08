@@ -84,7 +84,11 @@ impl BoundedVisitor {
         layout: &A::MoveTypeLayout,
     ) -> anyhow::Result<A::MoveValue> {
         let mut visitor = Self::default();
-        A::MoveValue::visit_deserialize(bytes, layout, &mut visitor)
+        Ok(A::MoveValue::visit_deserialize(
+            bytes,
+            layout,
+            &mut visitor,
+        )?)
     }
 
     /// Deserialize `bytes` as a `MoveStruct` with layout `layout`. Can fail if the bytes do not
@@ -364,25 +368,31 @@ pub(crate) mod tests {
 
         let before_value = std::env::var(MAX_BOUND_VAR_NAME).ok();
 
-        std::env::set_var(MAX_BOUND_VAR_NAME, "10");
+        unsafe {
+            std::env::set_var(MAX_BOUND_VAR_NAME, "10");
+        };
         let mut visitor = BoundedVisitor::default();
         let err = A::MoveValue::visit_deserialize(&bytes, &type_layout, &mut visitor).unwrap_err();
         let expect = expect!["Deserialized value too large"];
         expect.assert_eq(&err.to_string());
 
         // Should be unaffected as we already set the value, so this should still fail.
-        std::env::set_var(MAX_BOUND_VAR_NAME, "1000");
+        unsafe {
+            std::env::set_var(MAX_BOUND_VAR_NAME, "1000");
+        };
         let mut visitor = BoundedVisitor::default();
         let err = A::MoveValue::visit_deserialize(&bytes, &type_layout, &mut visitor).unwrap_err();
         let expect = expect!["Deserialized value too large"];
         expect.assert_eq(&err.to_string());
 
         // set the value back to what it was before if it was previously set, otherwise unset it.
-        if let Some(previous_value) = before_value {
-            std::env::set_var(MAX_BOUND_VAR_NAME, previous_value);
-        } else {
-            std::env::remove_var(MAX_BOUND_VAR_NAME);
-        }
+        unsafe {
+            if let Some(previous_value) = before_value {
+                std::env::set_var(MAX_BOUND_VAR_NAME, previous_value);
+            } else {
+                std::env::remove_var(MAX_BOUND_VAR_NAME);
+            }
+        };
 
         // Should still fail as the static value is already set.
         let mut visitor = BoundedVisitor::default();
@@ -513,10 +523,7 @@ pub(crate) mod tests {
             .map(|(name, layout)| A::MoveFieldLayout::new(ident_(name), layout))
             .collect();
 
-        A::MoveTypeLayout::Struct(Box::new(A::MoveStructLayout {
-            type_,
-            fields: Box::new(fields),
-        }))
+        A::MoveTypeLayout::Struct(Box::new(A::MoveStructLayout { type_, fields }))
     }
 
     /// Create a variant value for test purposes.
@@ -561,7 +568,7 @@ pub(crate) mod tests {
     }
 
     /// BCS encode Move value.
-    fn serialize(value: A::MoveValue) -> Vec<u8> {
+    pub(crate) fn serialize(value: A::MoveValue) -> Vec<u8> {
         value.clone().undecorate().simple_serialize().unwrap()
     }
 }

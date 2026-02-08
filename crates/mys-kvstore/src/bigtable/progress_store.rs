@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::{BigTableClient, KeyValueStoreReader, KeyValueStoreWriter};
+use crate::BigTableClient;
 use anyhow::Result;
 use async_trait::async_trait;
 use mys_data_ingestion_core::ProgressStore;

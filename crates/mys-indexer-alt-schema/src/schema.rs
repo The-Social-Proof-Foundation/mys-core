@@ -15,6 +15,36 @@ diesel::table! {
 }
 
 diesel::table! {
+    coin_balance_buckets_deletion_reference (cp_sequence_number, object_id) {
+        object_id -> Bytea,
+        cp_sequence_number -> Int8,
+    }
+}
+
+diesel::table! {
+    cp_bloom_blocks (cp_block_index, bloom_block_index) {
+        cp_block_index -> Int8,
+        bloom_block_index -> Int2,
+        bloom_filter -> Bytea,
+    }
+}
+
+diesel::table! {
+    cp_blooms (cp_sequence_number) {
+        cp_sequence_number -> Int8,
+        bloom_filter -> Bytea,
+    }
+}
+
+diesel::table! {
+    cp_sequence_numbers (cp_sequence_number) {
+        cp_sequence_number -> Int8,
+        tx_lo -> Int8,
+        epoch -> Int8,
+    }
+}
+
+diesel::table! {
     ev_emit_mod (package, module, tx_sequence_number) {
         package -> Bytea,
         module -> Text,
@@ -98,6 +128,17 @@ diesel::table! {
 }
 
 diesel::table! {
+    kv_packages (package_id, package_version) {
+        package_id -> Bytea,
+        package_version -> Int8,
+        original_id -> Bytea,
+        is_system_package -> Bool,
+        serialized_object -> Bytea,
+        cp_sequence_number -> Int8,
+    }
+}
+
+diesel::table! {
     kv_protocol_configs (protocol_version, config_name) {
         protocol_version -> Int8,
         config_name -> Text,
@@ -131,10 +172,17 @@ diesel::table! {
 }
 
 diesel::table! {
+    obj_info_deletion_reference (cp_sequence_number, object_id) {
+        object_id -> Bytea,
+        cp_sequence_number -> Int8,
+    }
+}
+
+diesel::table! {
     obj_versions (object_id, object_version) {
         object_id -> Bytea,
         object_version -> Int8,
-        object_digest -> Bytea,
+        object_digest -> Nullable<Bytea>,
         cp_sequence_number -> Int8,
     }
 }
@@ -145,16 +193,6 @@ diesel::table! {
         display_id -> Bytea,
         display_version -> Int2,
         display -> Bytea,
-    }
-}
-
-diesel::table! {
-    sum_packages (package_id) {
-        package_id -> Bytea,
-        original_id -> Bytea,
-        package_version -> Int8,
-        move_package -> Bytea,
-        cp_sequence_number -> Int8,
     }
 }
 
@@ -205,8 +243,25 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    watermarks (pipeline) {
+        pipeline -> Text,
+        epoch_hi_inclusive -> Int8,
+        checkpoint_hi_inclusive -> Int8,
+        tx_hi -> Int8,
+        timestamp_ms_hi_inclusive -> Int8,
+        reader_lo -> Int8,
+        pruner_timestamp -> Timestamp,
+        pruner_hi -> Int8,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(
     coin_balance_buckets,
+    coin_balance_buckets_deletion_reference,
+    cp_bloom_blocks,
+    cp_blooms,
+    cp_sequence_numbers,
     ev_emit_mod,
     ev_struct_inst,
     kv_checkpoints,
@@ -215,16 +270,18 @@ diesel::allow_tables_to_appear_in_same_query!(
     kv_feature_flags,
     kv_genesis,
     kv_objects,
+    kv_packages,
     kv_protocol_configs,
     kv_transactions,
     obj_info,
+    obj_info_deletion_reference,
     obj_versions,
     sum_displays,
-    sum_packages,
     tx_affected_addresses,
     tx_affected_objects,
     tx_balance_changes,
     tx_calls,
     tx_digests,
     tx_kinds,
+    watermarks,
 );

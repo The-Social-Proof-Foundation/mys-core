@@ -4,30 +4,36 @@
 
 use std::sync::Arc;
 
-use anyhow::{Context, Result};
-use diesel::{ExpressionMethods, QueryDsl};
+use anyhow::Context;
+use anyhow::Result;
+use async_trait::async_trait;
+use diesel::ExpressionMethods;
+use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
-use mys_indexer_alt_framework::pipeline::{concurrent::Handler, Processor};
-use mys_indexer_alt_schema::{checkpoints::StoredCheckpoint, schema::kv_checkpoints};
-use mys_pg_db as db;
-use mys_types::full_checkpoint_content::CheckpointData;
+use mys_indexer_alt_framework::pipeline::Processor;
+use mys_indexer_alt_framework::postgres::Connection;
+use mys_indexer_alt_framework::postgres::handler::Handler;
+use mys_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
+use mys_indexer_alt_schema::checkpoints::StoredCheckpoint;
+use mys_indexer_alt_schema::schema::kv_checkpoints;
 
 pub(crate) struct KvCheckpoints;
 
+#[async_trait]
 impl Processor for KvCheckpoints {
     const NAME: &'static str = "kv_checkpoints";
 
     type Value = StoredCheckpoint;
 
-    fn process(&self, checkpoint: &Arc<CheckpointData>) -> Result<Vec<Self::Value>> {
-        let sequence_number = checkpoint.checkpoint_summary.sequence_number as i64;
-        let checkpoint_summary = checkpoint.checkpoint_summary.data();
-        let signatures = checkpoint.checkpoint_summary.auth_sig();
+    async fn process(&self, checkpoint: &Arc<Checkpoint>) -> Result<Vec<Self::Value>> {
+        let sequence_number = checkpoint.summary.sequence_number as i64;
+        let summary = checkpoint.summary.data();
+        let signatures = checkpoint.summary.auth_sig();
         Ok(vec![StoredCheckpoint {
             sequence_number,
-            checkpoint_contents: bcs::to_bytes(&checkpoint.checkpoint_contents)
+            checkpoint_contents: bcs::to_bytes(&checkpoint.contents)
                 .with_context(|| format!("Serializing checkpoint {sequence_number} contents"))?,
-            checkpoint_summary: bcs::to_bytes(checkpoint_summary)
+            checkpoint_summary: bcs::to_bytes(summary)
                 .with_context(|| format!("Serializing checkpoint {sequence_number} summary"))?,
             validator_signatures: bcs::to_bytes(signatures)
                 .with_context(|| format!("Serializing checkpoint {sequence_number} signatures"))?,
@@ -35,9 +41,9 @@ impl Processor for KvCheckpoints {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl Handler for KvCheckpoints {
-    async fn commit(values: &[Self::Value], conn: &mut db::Connection<'_>) -> Result<usize> {
+    async fn commit<'a>(values: &[Self::Value], conn: &mut Connection<'a>) -> Result<usize> {
         Ok(diesel::insert_into(kv_checkpoints::table)
             .values(values)
             .on_conflict_do_nothing()
@@ -45,11 +51,11 @@ impl Handler for KvCheckpoints {
             .await?)
     }
 
-    async fn prune(
+    async fn prune<'a>(
         &self,
         from: u64,
         to_exclusive: u64,
-        conn: &mut db::Connection<'_>,
+        conn: &mut Connection<'a>,
     ) -> Result<usize> {
         let filter = kv_checkpoints::table
             .filter(kv_checkpoints::sequence_number.between(from as i64, to_exclusive as i64 - 1));
@@ -60,15 +66,14 @@ impl Handler for KvCheckpoints {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use diesel_async::RunQueryDsl;
     use mys_indexer_alt_framework::Indexer;
+    use mys_indexer_alt_framework::types::test_checkpoint_data_builder::TestCheckpointBuilder;
     use mys_indexer_alt_schema::MIGRATIONS;
-    use mys_types::test_checkpoint_data_builder::TestCheckpointDataBuilder;
 
-    async fn get_all_kv_checkpoints(
-        conn: &mut db::Connection<'_>,
-    ) -> Result<Vec<StoredCheckpoint>> {
+    use super::*;
+
+    async fn get_all_kv_checkpoints(conn: &mut Connection<'_>) -> Result<Vec<StoredCheckpoint>> {
         let query = kv_checkpoints::table.load(conn).await?;
         Ok(query)
     }
@@ -78,23 +83,23 @@ mod tests {
     #[tokio::test]
     async fn test_kv_checkpoints_pruning() {
         let (indexer, _db) = Indexer::new_for_testing(&MIGRATIONS).await;
-        let mut conn = indexer.db().connect().await.unwrap();
+        let mut conn = indexer.store().connect().await.unwrap();
 
         // Create 3 checkpoints
-        let mut builder = TestCheckpointDataBuilder::new(0);
+        let mut builder = TestCheckpointBuilder::new(0);
         builder = builder.start_transaction(0).finish_transaction();
         let checkpoint = Arc::new(builder.build_checkpoint());
-        let values = KvCheckpoints.process(&checkpoint).unwrap();
+        let values = KvCheckpoints.process(&checkpoint).await.unwrap();
         KvCheckpoints::commit(&values, &mut conn).await.unwrap();
 
         builder = builder.start_transaction(0).finish_transaction();
         let checkpoint = Arc::new(builder.build_checkpoint());
-        let values = KvCheckpoints.process(&checkpoint).unwrap();
+        let values = KvCheckpoints.process(&checkpoint).await.unwrap();
         KvCheckpoints::commit(&values, &mut conn).await.unwrap();
 
         builder = builder.start_transaction(0).finish_transaction();
         let checkpoint = Arc::new(builder.build_checkpoint());
-        let values = KvCheckpoints.process(&checkpoint).unwrap();
+        let values = KvCheckpoints.process(&checkpoint).await.unwrap();
         KvCheckpoints::commit(&values, &mut conn).await.unwrap();
 
         // Prune checkpoints from `[0, 2)`

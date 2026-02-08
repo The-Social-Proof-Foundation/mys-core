@@ -12,7 +12,7 @@ use mys_config::object_storage_config::{ObjectStoreConfig, ObjectStoreType};
 use mys_storage::object_store::util::path_to_filesystem;
 use mys_storage::{FileCompression, StorageFormat};
 use mys_swarm_config::test_utils::{empty_contents, CommitteeFixture};
-use mys_types::messages_checkpoint::{VerifiedCheckpoint, VerifiedCheckpointContents};
+use mys_types::messages_checkpoint::{VerifiedCheckpoint, VerifiedCheckpointContents, VersionedFullCheckpointContents};
 use mys_types::storage::{ReadStore, SharedInMemoryStore, SingleCheckpointSharedInMemoryStore};
 use object_store::DynObjectStore;
 use prometheus::Registry;
@@ -223,7 +223,7 @@ async fn test_archive_reader_e2e() -> Result<(), anyhow::Error> {
     let read_store = SharedInMemoryStore::default();
     read_store.inner_mut().insert_genesis_state(
         genesis_checkpoint,
-        VerifiedCheckpointContents::new_unchecked(genesis_checkpoint_content),
+        VerifiedCheckpointContents::new_unchecked(VersionedFullCheckpointContents::V1(genesis_checkpoint_content)),
         test_state.committee.committee().to_owned(),
     );
     let tx_counter = Arc::new(AtomicU64::new(0));
@@ -282,7 +282,7 @@ async fn test_verify_archive_with_oneshot_store() -> Result<(), anyhow::Error> {
     let mut read_store = SingleCheckpointSharedInMemoryStore::default();
     read_store.insert_genesis_state(
         genesis_checkpoint,
-        VerifiedCheckpointContents::new_unchecked(genesis_checkpoint_content),
+        VerifiedCheckpointContents::new_unchecked(VersionedFullCheckpointContents::V1(genesis_checkpoint_content)),
         test_state.committee.committee().to_owned(),
     );
 
@@ -356,7 +356,7 @@ async fn test_verify_archive_with_oneshot_store_bad_data() -> Result<(), anyhow:
     let mut read_store = SingleCheckpointSharedInMemoryStore::default();
     read_store.insert_genesis_state(
         genesis_checkpoint,
-        VerifiedCheckpointContents::new_unchecked(genesis_checkpoint_content),
+        VerifiedCheckpointContents::new_unchecked(VersionedFullCheckpointContents::V1(genesis_checkpoint_content)),
         test_state.committee.committee().to_owned(),
     );
 

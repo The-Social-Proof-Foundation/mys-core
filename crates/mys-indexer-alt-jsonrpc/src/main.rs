@@ -4,15 +4,28 @@
 
 use anyhow::Context;
 use clap::Parser;
-use mys_indexer_alt_jsonrpc::{
-    args::{Args, Command},
-    config::RpcConfig,
-    start_rpc,
-};
-use mys_indexer_alt_metrics::MetricsService;
 use prometheus::Registry;
+use mys_futures::service::Error;
+use mys_indexer_alt_jsonrpc::args::Args;
+use mys_indexer_alt_jsonrpc::args::Command;
+use mys_indexer_alt_jsonrpc::config::RpcLayer;
+use mys_indexer_alt_jsonrpc::start_rpc;
+use mys_indexer_alt_metrics::MetricsService;
+use mys_indexer_alt_metrics::uptime;
 use tokio::fs;
-use tokio_util::sync::CancellationToken;
+
+// Define the `GIT_REVISION` const
+bin_version::git_revision!();
+
+static VERSION: &str = const_str::concat!(
+    env!("CARGO_PKG_VERSION_MAJOR"),
+    ".",
+    env!("CARGO_PKG_VERSION_MINOR"),
+    ".",
+    env!("CARGO_PKG_VERSION_PATCH"),
+    "-",
+    GIT_REVISION
+);
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -23,11 +36,21 @@ async fn main() -> anyhow::Result<()> {
         .with_env()
         .init();
 
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install CryptoProvider");
+
     match args.command {
         Command::Rpc {
+            database_url,
+            bigtable_instance,
+            db_args,
+            bigtable_args,
+            consistent_reader_args,
             rpc_args,
             system_package_task_args,
             metrics_args,
+            node_args,
             config,
         } => {
             let rpc_config = if let Some(path) = config {
@@ -37,35 +60,51 @@ async fn main() -> anyhow::Result<()> {
 
                 toml::from_str(&contents).context("Failed to parse configuration TOML file")?
             } else {
-                RpcConfig::default()
-            };
-
-            let cancel = CancellationToken::new();
+                RpcLayer::default()
+            }
+            .finish();
 
             let registry = Registry::new_custom(Some("jsonrpc_alt".into()), None)
                 .context("Failed to create Prometheus registry.")?;
 
-            let metrics = MetricsService::new(metrics_args, registry, cancel.child_token());
+            let metrics = MetricsService::new(metrics_args, registry);
 
-            let h_rpc = start_rpc(
-                args.db_args,
+            metrics
+                .registry()
+                .register(uptime(VERSION)?)
+                .context("Failed to register uptime metric.")?;
+
+            let s_rpc = start_rpc(
+                Some(database_url),
+                bigtable_instance,
+                db_args,
+                bigtable_args,
+                consistent_reader_args,
                 rpc_args,
+                node_args,
                 system_package_task_args,
                 rpc_config,
                 metrics.registry(),
-                cancel.child_token(),
             )
             .await?;
 
-            let h_metrics = metrics.run().await?;
+            let s_metrics = metrics.run().await?;
 
-            let _ = h_rpc.await;
-            cancel.cancel();
-            let _ = h_metrics.await;
+            match s_rpc.attach(s_metrics).main().await {
+                Ok(()) | Err(Error::Terminated) => {}
+
+                Err(Error::Aborted) => {
+                    std::process::exit(1);
+                }
+
+                Err(Error::Task(_)) => {
+                    std::process::exit(2);
+                }
+            }
         }
 
         Command::GenerateConfig => {
-            let config = RpcConfig::example();
+            let config = RpcLayer::example();
             let config_toml = toml::to_string_pretty(&config)
                 .context("Failed to serialize default configuration to TOML.")?;
 

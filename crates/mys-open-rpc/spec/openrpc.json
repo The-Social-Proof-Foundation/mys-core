@@ -9650,10 +9650,10 @@
             "description": "Object is sequenced via consensus. Ownership is managed by the configured authenticator.\n\nNote: wondering what happened to `V1`? `Shared` above was the V1 of consensus objects.",
             "type": "object",
             "required": [
-              "ConsensusV2"
+              "ConsensusAddressOwner"
             ],
             "properties": {
-              "ConsensusV2": {
+              "ConsensusAddressOwner": {
                 "type": "object",
                 "required": [
                   "authenticator",

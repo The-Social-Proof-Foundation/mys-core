@@ -108,13 +108,13 @@ async fn make_clients(
     for validator in active_validators {
         let net_addr = Multiaddr::try_from(validator.net_address).unwrap();
         // TODO: Enable TLS on this interface with below config, once support is rolled out to validators.
-        // let tls_config = mys_tls::create_rustls_client_config(
-        //     mys_types::crypto::NetworkPublicKey::from_bytes(&validator.network_pubkey_bytes)?,
-        //     mys_tls::MYS_VALIDATOR_SERVER_NAME.to_string(),
-        //     None,
-        // );
+        // For now, use insecure config
+        let tls_config = rustls::ClientConfig::builder()
+            .with_safe_defaults()
+            .with_root_certificates(rustls::RootCertStore::empty())
+            .with_no_client_auth();
         let channel = net_config
-            .connect_lazy(&net_addr, None)
+            .connect_lazy(&net_addr, tls_config)
             .map_err(|err| anyhow!(err.to_string()))?;
         let client = NetworkAuthorityClient::new(channel);
         let public_key_bytes =
@@ -956,6 +956,9 @@ pub async fn download_formal_snapshot(
                     ),
                 );
                 progress_bar.finish_with_message("Verification complete");
+            }
+            CheckpointCommitment::CheckpointArtifactsDigest(_) => {
+                // CheckpointArtifactsDigest verification not implemented
             }
         };
     } else {
