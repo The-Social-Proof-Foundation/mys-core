@@ -1,7 +1,6 @@
 [package]
 authors = [
-  "Jk Jensen <jk@mystenlabs.com>",
-  "Mysten Labs <build@mystenlabs.com>",
+  "Brandon Shaw <brandon@mysocial.network>",
 ]
 edition = "2021"
 license = "Apache-2.0"
